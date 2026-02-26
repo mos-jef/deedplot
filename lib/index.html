@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeedPlot — Metes &amp; Bounds Parcel Plotter</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #0f1117;
+  --bg-secondary: #1a1d27;
+  --bg-tertiary: #242836;
+  --border: #2d3348;
+  --accent: #4a7cff;
+  --accent-hover: #6190ff;
+  --accent-dim: #2a4a9e;
+  --text-primary: #e4e7ef;
+  --text-secondary: #8b90a0;
+  --text-muted: #5a5f72;
+  --success: #3dd68c;
+  --danger: #ef4444;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:var(--bg-primary);color:var(--text-primary);overflow:hidden;height:100vh}
+.app{display:grid;grid-template-columns:390px 1fr;grid-template-rows:56px 1fr 36px;height:100vh}
+.topbar{grid-column:1/-1;background:var(--bg-secondary);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;z-index:100}
+.topbar .logo{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:16px;color:var(--accent);display:flex;align-items:center;gap:8px}
+.topbar .logo svg{width:22px;height:22px}
+.topbar .divider{width:1px;height:28px;background:var(--border)}
+.topbar .actions{display:flex;gap:6px;margin-left:auto}
+.btn{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:7px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.btn:hover{border-color:var(--text-muted);background:var(--border)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent-hover)}
+.btn.danger{border-color:var(--danger);color:var(--danger)}
+.btn.danger:hover{background:var(--danger);color:#fff}
+.btn.sm{padding:4px 10px;font-size:11px}
+.sidebar{background:var(--bg-secondary);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.sidebar::-webkit-scrollbar{width:6px}
+.sidebar::-webkit-scrollbar-track{background:transparent}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.panel{border-bottom:1px solid var(--border)}
+.panel-header{padding:12px 16px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none}
+.panel-header:hover{color:var(--text-primary)}
+.panel-header .chevron{transition:transform .2s;font-size:10px}
+.panel-header.collapsed .chevron{transform:rotate(-90deg)}
+.panel-body{padding:0 16px 14px}
+.panel-body.collapsed{display:none}
+.deed-input{width:100%;min-height:130px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.6;color:var(--text-primary);resize:vertical;outline:none}
+.deed-input:focus{border-color:var(--accent)}
+.deed-input::placeholder{color:var(--text-muted)}
+.input-row{display:flex;gap:6px;margin-top:7px;align-items:center}
+.input-row label{font-size:11px;color:var(--text-secondary);min-width:55px;font-weight:500}
+.input-sm{flex:1;background:var(--bg-primary);border:1px solid var(--border);border-radius:4px;padding:5px 8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-primary);outline:none}
+.input-sm:focus{border-color:var(--accent)}
+input[type="color"]{width:30px;height:24px;border:1px solid var(--border);border-radius:4px;background:none;cursor:pointer;padding:1px}
+input[type="range"]{flex:1;accent-color:var(--accent);height:4px}
+select.input-sm{appearance:auto;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:11px;cursor:pointer}
+.checkbox-row{display:flex;align-items:center;gap:8px;margin-top:5px;font-size:11px;color:var(--text-secondary);cursor:pointer}
+.checkbox-row input{accent-color:var(--accent)}
+.tract-item{background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:6px;cursor:pointer;transition:all .15s}
+.tract-item:hover{border-color:var(--text-muted)}
+.tract-item.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent-dim)}
+.tract-item .tract-header{display:flex;align-items:center;gap:8px}
+.tract-color-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.tract-name{font-size:12px;font-weight:600;flex:1}
+.tract-meta{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-top:3px;padding-left:20px}
+.call-table{width:100%;border-collapse:collapse;margin-top:8px}
+.call-table th{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);text-align:left;padding:3px 6px;border-bottom:1px solid var(--border)}
+.call-table td{font-family:'JetBrains Mono',monospace;font-size:11px;padding:3px 6px;color:var(--text-secondary);border-bottom:1px solid rgba(45,51,72,.3)}
+.call-table tr:hover td{color:var(--text-primary);background:rgba(74,124,255,.05)}
+.call-num{color:var(--accent);font-weight:600}
+.canvas-container{position:relative;overflow:hidden;background:#181c26;cursor:grab}
+.canvas-container:active{cursor:grabbing}
+.canvas-container canvas{position:absolute;top:0;left:0}
+.statusbar{grid-column:1/-1;background:var(--bg-secondary);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 16px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);gap:16px}
+.statusbar .sep{color:var(--border)}
+.status-item{display:flex;align-items:center;gap:4px}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--success)}
+.toast{position:fixed;bottom:52px;right:20px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:12px;color:var(--text-primary);box-shadow:0 8px 32px rgba(0,0,0,.4);transform:translateY(20px);opacity:0;transition:all .3s;z-index:1000;pointer-events:none}
+.toast.show{transform:translateY(0);opacity:1}
+kbd{background:var(--bg-primary);border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted)}
+.help-text{font-size:10px;color:var(--text-muted);margin-top:5px;line-height:1.5}
+.section-label{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-top:10px;margin-bottom:5px;padding-top:7px;border-top:1px solid var(--border)}
+.anno-item{display:flex;align-items:center;gap:4px;background:var(--bg-primary);border:1px solid var(--border);border-radius:4px;padding:4px 6px;margin-bottom:4px;font-size:11px}
+.anno-item input[type="text"]{flex:1;background:transparent;border:none;color:var(--text-primary);font-family:'JetBrains Mono',monospace;font-size:11px;outline:none;min-width:0}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+      DeedPlot
+    </div>
+    <div class="divider"></div>
+    <span style="font-size:12px;color:var(--text-secondary)">Metes &amp; Bounds Parcel Plotter</span>
+    <div class="actions">
+      <button class="btn" onclick="fitToView()">⛶ Fit View</button>
+      <button class="btn" onclick="exportPNG(false)">⬇ Export PNG</button>
+      <button class="btn" onclick="exportPNG(true)">⬇ Transparent PNG</button>
+      <button class="btn" onclick="loadExample()">Load Example</button>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="panel">
+      <div class="panel-header" onclick="togglePanel(this)">Legal Description <span class="chevron">▼</span></div>
+      <div class="panel-body">
+        <textarea class="deed-input" id="deedInput" placeholder="Paste metes and bounds legal description here..."></textarea>
+        <div class="input-row" style="margin-top:8px">
+          <button class="btn primary" onclick="parseDeed()" style="flex:1">▶ Plot</button>
+          <button class="btn" onclick="document.getElementById('deedInput').value='';clearTracts();">Clear</button>
+        </div>
+        <div class="help-text"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> plot · <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo · Scroll on labels to rotate · Double-click to reset</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header" onclick="togglePanel(this)">Tracts <span class="chevron">▼</span></div>
+      <div class="panel-body" id="tractList"><div style="color:var(--text-muted);font-size:11px;padding:10px 0;text-align:center">No tracts.</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header" onclick="togglePanel(this)">Tract Properties <span class="chevron">▼</span></div>
+      <div class="panel-body" id="tractProps">
+        <div class="input-row"><label>Name</label><input class="input-sm" id="propName" oninput="updateProp('name',this.value)"></div>
+        <div class="input-row"><label>Parcel ID</label><input class="input-sm" id="propParcelId" oninput="updateProp('parcelId',this.value)"></div>
+
+        <div class="section-label">Parcel Fill &amp; Stroke</div>
+        <div class="input-row"><label>Fill</label><input type="color" id="propFill" value="#CDDC39" oninput="updateProp('fillColor',this.value)"><label style="min-width:auto">Opacity</label><input type="range" id="propAlpha" min="0" max="100" value="65" oninput="updateProp('alpha',this.value/100)"></div>
+        <div class="input-row"><label>Stroke</label><input type="color" id="propStroke" value="#000000" oninput="updateProp('strokeColor',this.value)"><label style="min-width:auto">W</label><input type="range" id="propStrokeW" min="0" max="8" value="3" oninput="updateProp('strokeWidth',+this.value)"><span id="strokeWVal" style="font-size:10px;color:var(--text-muted);min-width:14px">3</span></div>
+
+        <div class="section-label">Tract Name Display</div>
+        <div class="input-row"><label>Color</label><input type="color" id="propNameColor" value="#ffffff" oninput="updateProp('nameColor',this.value)"><label style="min-width:auto">Size</label><input type="range" id="propNameSize" min="8" max="30" value="12" oninput="updateProp('nameSize',+this.value)"><span id="nameSizeVal" style="font-size:10px;color:var(--text-muted);min-width:14px">12</span></div>
+        <div class="input-row"><label>BG</label><input type="color" id="propNameBg" value="#0f1117" oninput="updateProp('nameBg',this.value)"><label style="min-width:auto">Opacity</label><input type="range" id="propNameBgA" min="0" max="100" value="0" oninput="updateProp('nameBgAlpha',this.value/100)"></div>
+        <label class="checkbox-row"><input type="checkbox" id="propNameShowBg" onchange="updateProp('nameShowBg',this.checked)"> Show Name BG</label>
+
+        <div class="section-label">Parcel ID Display</div>
+        <div class="input-row"><label>Color</label><input type="color" id="propPidColor" value="#ffffff" oninput="updateProp('pidColor',this.value)"><label style="min-width:auto">Size</label><input type="range" id="propPidSize" min="8" max="36" value="17" oninput="updateProp('pidSize',+this.value)"><span id="pidSizeVal" style="font-size:10px;color:var(--text-muted);min-width:14px">17</span></div>
+        <div class="input-row"><label>BG</label><input type="color" id="propPidBg" value="#0f1117" oninput="updateProp('pidBg',this.value)"><label style="min-width:auto">Opacity</label><input type="range" id="propPidBgA" min="0" max="100" value="80" oninput="updateProp('pidBgAlpha',this.value/100)"></div>
+        <label class="checkbox-row"><input type="checkbox" id="propPidShowBg" checked onchange="updateProp('pidShowBg',this.checked)"> Show PID BG</label>
+
+        <div class="section-label">Call Labels</div>
+        <div class="input-row"><label>Size</label><input type="range" id="propFontSize" min="6" max="28" value="12" oninput="updateProp('fontSize',+this.value)"><span id="fontSizeVal" style="font-size:10px;color:var(--text-muted);min-width:14px">12</span></div>
+        <div class="input-row"><label>Text</label><input type="color" id="propLabelColor" value="#e4e7ef" oninput="updateProp('labelColor',this.value)"><label style="min-width:auto">BG</label><input type="color" id="propLabelBg" value="#0f1117" oninput="updateProp('labelBg',this.value)"><label style="min-width:auto">Op</label><input type="range" id="propLabelBgA" min="0" max="100" value="85" oninput="updateProp('labelBgAlpha',this.value/100)"></div>
+        <label class="checkbox-row"><input type="checkbox" id="propShowLabelBg" checked onchange="updateProp('showLabelBg',this.checked)"> Show Label BG</label>
+
+        <div class="section-label">Leader Lines</div>
+        <div class="input-row"><label>Color</label><input type="color" id="propLeaderColor" value="#ffffff" oninput="updateProp('leaderColor',this.value)"><label style="min-width:auto">W</label><input type="range" id="propLeaderW" min="0.5" max="4" step="0.5" value="1" oninput="updateProp('leaderWidth',+this.value)"><label style="min-width:auto">Op</label><input type="range" id="propLeaderA" min="10" max="100" value="50" oninput="updateProp('leaderAlpha',this.value/100)"></div>
+        <div class="input-row"><label>End</label><select class="input-sm" id="propLeaderEnd" onchange="updateProp('leaderEnd',this.value)" style="flex:1"><option value="circle">● Circle</option><option value="diamond">◆ Diamond</option><option value="triangle">▶ Triangle</option><option value="triangle-rev">◀ Rev Triangle</option><option value="arrow">→ Arrow</option><option value="none">None</option></select></div>
+
+        <div class="section-label">Display</div>
+        <label class="checkbox-row"><input type="checkbox" id="propLeaderLines" checked onchange="updateProp('leaderLines',this.checked)"> Auto Leader Lines</label>
+        <label class="checkbox-row"><input type="checkbox" id="propShowBearings" checked onchange="updateProp('showBearings',this.checked)"> Show Bearings</label>
+        <label class="checkbox-row"><input type="checkbox" id="propShowDistances" checked onchange="updateProp('showDistances',this.checked)"> Show Distances</label>
+        <label class="checkbox-row"><input type="checkbox" id="propNumberCalls" checked onchange="updateProp('numberCalls',this.checked)"> Number Calls</label>
+        <label class="checkbox-row"><input type="checkbox" id="propHatch" onchange="updateProp('hatching',this.checked)"> Hatching</label>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header" onclick="togglePanel(this)">Text Annotations <span class="chevron">▼</span></div>
+      <div class="panel-body"><div id="annoList"></div><button class="btn sm" onclick="addAnnotation()" style="margin-top:4px;width:100%">+ Add Text</button><div class="help-text">Drag to move. Scroll to rotate.</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header" onclick="togglePanel(this)">Background Image <span class="chevron">▼</span></div>
+      <div class="panel-body">
+        <input type="file" id="bgInput" accept="image/*" onchange="loadBgImage(this)" style="display:none">
+        <button class="btn sm" onclick="document.getElementById('bgInput').click()" style="width:100%">📷 Upload Image</button>
+        <div class="input-row"><label>Opacity</label><input type="range" id="bgAlpha" min="0" max="100" value="40" oninput="bgS.alpha=this.value/100;redraw()"></div>
+        <div class="input-row"><label>Scale</label><input type="range" id="bgScale" min="1" max="2000" value="100" oninput="bgS.scale=this.value/100;$('bgScaleV').textContent=this.value+'%';redraw()"><span id="bgScaleV" style="font-size:10px;color:var(--text-muted);min-width:36px">100%</span></div>
+        <div class="input-row"><label>Rotation</label><input type="range" id="bgRot" min="-180" max="180" value="0" oninput="bgS.rotation=+this.value;$('bgRotV').textContent=this.value+'°';$('bgRotFine').value=0;redraw()"><span id="bgRotV" style="font-size:10px;color:var(--text-muted);min-width:28px">0°</span></div>
+        <div class="input-row"><label>Fine ±5°</label><input type="range" id="bgRotFine" min="-50" max="50" value="0" step="1" oninput="bgS.rotFine=this.value/10;$('bgRotFineV').textContent=(this.value/10).toFixed(1)+'°';redraw()"><span id="bgRotFineV" style="font-size:10px;color:var(--text-muted);min-width:32px">0.0°</span></div>
+        <label class="checkbox-row"><input type="checkbox" id="bgShow" checked onchange="bgS.show=this.checked;redraw()"> Show</label>
+        <button class="btn sm danger" onclick="clearBgImage()" style="margin-top:4px;width:100%">Remove</button>
+        <div class="help-text">Drag image on map to position.</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header" onclick="togglePanel(this)">Map Settings <span class="chevron">▼</span></div>
+      <div class="panel-body">
+        <div class="input-row"><label>Title</label><input class="input-sm" id="mapTitle" value="Parcel Map" oninput="redraw()"></div>
+        <div class="input-row"><label>Subtitle</label><input class="input-sm" id="mapSubtitle" oninput="redraw()"></div>
+        <div class="input-row"><label>Text Color</label><input type="color" id="mapTextColor" value="#ffffff" oninput="redraw()"></div>
+        <div class="input-row"><label>Canvas BG</label><input type="color" id="mapBg" value="#181c26" oninput="redraw()"><label style="min-width:auto">Grid</label><input type="color" id="mapGrid" value="#252b3d" oninput="redraw()"></div>
+        <label class="checkbox-row"><input type="checkbox" id="mapShowGrid" checked onchange="redraw()"> Grid</label>
+        <label class="checkbox-row"><input type="checkbox" id="mapShowNorth" checked onchange="redraw()"> North Arrow</label>
+        <label class="checkbox-row"><input type="checkbox" id="mapShowScale" checked onchange="redraw()"> Scale Bar</label>
+        <label class="checkbox-row"><input type="checkbox" id="mapShowLegend" checked onchange="redraw()"> Call Legend Box</label>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header" onclick="togglePanel(this)">Call Schedule <span class="chevron">▼</span></div>
+      <div class="panel-body" id="callSchedule"><div style="color:var(--text-muted);font-size:11px;text-align:center;padding:6px 0">Select a tract.</div></div>
+    </div>
+  </div>
+
+  <div class="canvas-container" id="canvasContainer"><canvas id="mapCanvas"></canvas></div>
+
+  <div class="statusbar">
+    <div class="status-item"><span class="status-dot"></span> Ready</div>
+    <span class="sep">│</span><span id="statusCoords">X: 0  Y: 0</span>
+    <span class="sep">│</span><span id="statusZoom">Zoom: 100%</span>
+    <span class="sep">│</span><span id="statusTracts">Tracts: 0</span>
+    <span style="margin-left:auto"><kbd>Scroll</kbd> zoom · <kbd>Ctrl+Z</kbd> undo</span>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+
+// ═══════════════ STATE ═══════════════
+let tracts=[], activeTractIdx=-1;
+let cam={x:0,y:0,zoom:0.25};
+let isDragging=false, dragStart={x:0,y:0};
+let canvas, ctx;
+let dragTarget=null, dragOffset={x:0,y:0};
+let annotations=[];
+let bgS={img:null,show:true,alpha:0.4,scale:1,rotation:0,rotFine:0,wx:0,wy:0};
+let legendPos={wx:null,wy:null}; // world coords, null=auto bottom-left
+
+// Undo
+let undoStack=[], MAX_UNDO=50;
+function saveUndo(){
+  const s={tracts:JSON.parse(JSON.stringify(tracts,(k,v)=>typeof v==='function'?undefined:v)),annotations:JSON.parse(JSON.stringify(annotations)),activeTractIdx,legendPos:{...legendPos}};
+  undoStack.push(s);if(undoStack.length>MAX_UNDO)undoStack.shift();
+}
+function doUndo(){
+  if(!undoStack.length){showToast('Nothing to undo');return;}
+  const s=undoStack.pop();
+  annotations=s.annotations;activeTractIdx=s.activeTractIdx;legendPos=s.legendPos;
+  tracts=s.tracts.map(t=>{t.calls=t.calls.map(c=>{c.toRad=makeToRad(c.quad,c.deg,c.min,c.sec,c.dir);return c;});t.coords=callsToCoords(t.calls);return t;});
+  updateTractList();updateProps();updateCallSchedule();updateAnnoList();redraw();showToast('Undo');
+}
+
+// ═══════════════ MATH ═══════════════
+function makeToRad(q,d,m,s,dir){return function(){const dd=d+m/60+s/3600;if(q==='N'&&dir==='E')return(90-dd)*Math.PI/180;if(q==='N'&&dir==='W')return(90+dd)*Math.PI/180;if(q==='S'&&dir==='E')return(270+dd)*Math.PI/180;if(q==='S'&&dir==='W')return(270-dd)*Math.PI/180;return 0;};}
+
+function parseBearing(text){
+  const t=text.replace(/North/gi,'N').replace(/South/gi,'S').replace(/East/gi,'E').replace(/West/gi,'W').replace(/[''′]/g,"'").replace(/[""″]/g,'"').replace(/[°˚]/g,'°');
+  const m=t.match(/([NS])\s*(\d+)[°]\s*(\d+)[':]\s*([\d.]+)["']?\s*([EW])/);
+  if(!m)return null;
+  const quad=m[1],deg=+m[2],min=+m[3],sec=+m[4],dir=m[5];
+  const after=t.slice(t.indexOf(m[0])+m[0].length);
+  const dm=after.match(/(?:a\s+distance\s+of\s+)?(\d[\d,]*(?:\.\d+)?)\s*(?:feet|ft|')?/i);
+  if(!dm)return null;
+  const dist=parseFloat(dm[1].replace(/,/g,''));
+  return{quad,deg,min,sec,dir,dist,bearingStr:`${quad} ${String(deg).padStart(2,'0')}°${String(min).padStart(2,'0')}'${sec.toFixed(2).padStart(5,'0')}" ${dir}`,labelOffset:null,labelRotation:0,toRad:makeToRad(quad,deg,min,sec,dir)};
+}
+
+function parseDescription(text){return text.replace(/\n/g,' ').replace(/\s+/g,' ').split(/[Tt]hence\s+/).map(parseBearing).filter(Boolean);}
+
+function callsToCoords(calls,sx=0,sy=0){const pts=[{x:sx,y:sy}];let x=sx,y=sy;for(const c of calls){const a=c.toRad();x+=c.dist*Math.cos(a);y+=c.dist*Math.sin(a);pts.push({x,y});}return pts;}
+function computeArea(pts){let a=0;const n=pts.length-1;for(let i=0;i<n;i++){const j=(i+1)%n;a+=pts[i].x*pts[j].y-pts[j].x*pts[i].y;}return Math.abs(a)/2/43560;}
+function centroid(pts){const n=pts.length-1;let cx=0,cy=0;for(let i=0;i<n;i++){cx+=pts[i].x;cy+=pts[i].y;}return{x:cx/n,y:cy/n};}
+function closureError(pts){const s=pts[0],e=pts[pts.length-1];return Math.sqrt((e.x-s.x)**2+(e.y-s.y)**2);}
+
+// ═══════════════ TRACTS ═══════════════
+const defColors=['#CDDC39','#EF9A9A','#81D4FA','#A5D6A7','#FFE082','#CE93D8','#80CBC4'];
+function createTract(calls,name){
+  return{name:name||`Tract ${tracts.length+1}`,parcelId:'',calls,coords:callsToCoords(calls),
+    fillColor:defColors[tracts.length%defColors.length],alpha:0.65,
+    strokeColor:'#000000',strokeWidth:3,
+    fontSize:12,labelColor:'#e4e7ef',labelBg:'#0f1117',labelBgAlpha:0.85,showLabelBg:true,
+    nameColor:'#ffffff',nameSize:12,nameBg:'#0f1117',nameBgAlpha:0,nameShowBg:false,nameOffset:null,nameRotation:0,
+    pidColor:'#ffffff',pidSize:17,pidBg:'#0f1117',pidBgAlpha:0.8,pidShowBg:true,pidOffset:null,pidRotation:0,
+    leaderColor:'#ffffff',leaderWidth:1,leaderEnd:'circle',leaderAlpha:0.5,
+    leaderLines:true,showBearings:true,showDistances:true,numberCalls:true,hatching:false,isException:false};
+}
+
+function parseDeed(){
+  const text=$('deedInput').value.trim();if(!text){showToast('Paste a description');return;}
+  saveUndo();
+  const excIdx=text.search(/EXCEPT(?:ING)?/i);
+  if(excIdx>0){
+    const mc=parseDescription(text.slice(0,excIdx)),ec=parseDescription(text.slice(excIdx));
+    if(mc.length)tracts.push(createTract(mc,'Main Tract'));
+    if(ec.length){const t=createTract(ec,'Exception');t.fillColor='#FF8A65';t.isException=true;t.hatching=true;tracts.push(t);}
+  }else{
+    const calls=parseDescription(text);if(!calls.length){showToast('No calls found.');return;}
+    tracts.push(createTract(calls));
+  }
+  updateTractList();if(tracts.length>0)selectTract(tracts.length-1);fitToView();setTimeout(fitToView,100);showToast(`Plotted ${tracts.length} tract(s)`);
+}
+
+function clearTracts(){saveUndo();tracts=[];activeTractIdx=-1;annotations=[];legendPos={wx:null,wy:null};updateTractList();updateCallSchedule();updateAnnoList();redraw();}
+function selectTract(i){activeTractIdx=i;updateTractList();updateProps();updateCallSchedule();redraw();}
+
+function updateProp(key,val){
+  if(activeTractIdx<0)return;saveUndo();
+  tracts[activeTractIdx][key]=val;
+  if(key==='fontSize')$('fontSizeVal').textContent=val;
+  if(key==='strokeWidth')$('strokeWVal').textContent=val;
+  if(key==='nameSize')$('nameSizeVal').textContent=val;
+  if(key==='pidSize')$('pidSizeVal').textContent=val;
+  updateTractList();redraw();
+}
+
+function updateProps(){
+  if(activeTractIdx<0)return;const t=tracts[activeTractIdx];
+  $('propName').value=t.name;$('propParcelId').value=t.parcelId;
+  $('propFill').value=t.fillColor;$('propAlpha').value=Math.round(t.alpha*100);
+  $('propStroke').value=t.strokeColor;$('propStrokeW').value=t.strokeWidth;$('strokeWVal').textContent=t.strokeWidth;
+  $('propNameColor').value=t.nameColor;$('propNameSize').value=t.nameSize;$('nameSizeVal').textContent=t.nameSize;
+  $('propNameBg').value=t.nameBg;$('propNameBgA').value=Math.round(t.nameBgAlpha*100);$('propNameShowBg').checked=t.nameShowBg;
+  $('propPidColor').value=t.pidColor;$('propPidSize').value=t.pidSize;$('pidSizeVal').textContent=t.pidSize;
+  $('propPidBg').value=t.pidBg;$('propPidBgA').value=Math.round(t.pidBgAlpha*100);$('propPidShowBg').checked=t.pidShowBg;
+  $('propFontSize').value=t.fontSize;$('fontSizeVal').textContent=t.fontSize;
+  $('propLabelColor').value=t.labelColor;$('propLabelBg').value=t.labelBg;$('propLabelBgA').value=Math.round(t.labelBgAlpha*100);$('propShowLabelBg').checked=t.showLabelBg;
+  $('propLeaderColor').value=t.leaderColor;$('propLeaderW').value=t.leaderWidth;$('propLeaderEnd').value=t.leaderEnd;$('propLeaderA').value=Math.round(t.leaderAlpha*100);
+  $('propLeaderLines').checked=t.leaderLines;$('propShowBearings').checked=t.showBearings;$('propShowDistances').checked=t.showDistances;$('propNumberCalls').checked=t.numberCalls;$('propHatch').checked=t.hatching;
+}
+
+function updateTractList(){
+  const el=$('tractList');
+  if(!tracts.length){el.innerHTML='<div style="color:var(--text-muted);font-size:11px;padding:10px 0;text-align:center">No tracts.</div>';return;}
+  el.innerHTML=tracts.map((t,i)=>{
+    const a=computeArea(t.coords),cls=i===activeTractIdx?'tract-item active':'tract-item';
+    return`<div class="${cls}" onclick="selectTract(${i})"><div class="tract-header"><div class="tract-color-dot" style="background:${t.fillColor}"></div><span class="tract-name">${t.name}</span><button class="btn sm danger" onclick="event.stopPropagation();saveUndo();tracts.splice(${i},1);if(activeTractIdx>=${i})activeTractIdx=Math.max(0,activeTractIdx-1);updateTractList();redraw();">✕</button></div><div class="tract-meta">${t.calls.length} calls · ${a.toFixed(4)} ac · closure ${closureError(t.coords).toFixed(4)}'</div></div>`;
+  }).join('');
+  $('statusTracts').textContent=`Tracts: ${tracts.length}`;
+}
+
+function updateCallSchedule(){
+  const el=$('callSchedule');
+  if(activeTractIdx<0){el.innerHTML='<div style="color:var(--text-muted);font-size:11px;text-align:center;padding:6px 0">Select a tract.</div>';return;}
+  const t=tracts[activeTractIdx];
+  let h='<table class="call-table"><tr><th>#</th><th>Bearing</th><th>Dist</th></tr>';
+  t.calls.forEach((c,i)=>{h+=`<tr><td class="call-num">${i+1}</td><td>${c.bearingStr}</td><td>${c.dist.toFixed(2)}'</td></tr>`;});
+  h+='</table>';
+  const area=computeArea(t.coords),ce=closureError(t.coords),perim=t.calls.reduce((s,c)=>s+c.dist,0),ratio=ce>0.001?`1:${Math.round(perim/ce)}`:'PERFECT';
+  h+=`<div style="margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-secondary);line-height:1.7">Area: ${area.toFixed(4)} ac (${(area*43560).toFixed(0)} sf)<br>Perim: ${perim.toFixed(2)}'<br>Closure: ${ce.toFixed(4)}' (${ratio})</div>`;
+  el.innerHTML=h;
+}
+
+// ═══════════════ ANNOTATIONS ═══════════════
+function addAnnotation(){saveUndo();annotations.push({text:'Label',wx:cam.x,wy:cam.y,color:'#ffffff',bgColor:'#0f1117',bgAlpha:0.8,showBg:true,fontSize:14,rotation:0});updateAnnoList();redraw();}
+function updateAnnoList(){
+  const el=$('annoList');if(!annotations.length){el.innerHTML='';return;}
+  el.innerHTML=annotations.map((a,i)=>`<div class="anno-item"><input type="text" value="${a.text}" oninput="annotations[${i}].text=this.value;redraw()"><input type="color" value="${a.color}" style="width:20px;height:18px;border:none;padding:0" onchange="annotations[${i}].color=this.value;redraw()" title="Text"><input type="color" value="${a.bgColor}" style="width:20px;height:18px;border:none;padding:0" onchange="annotations[${i}].bgColor=this.value;redraw()" title="BG"><input type="checkbox" ${a.showBg?'checked':''} onchange="annotations[${i}].showBg=this.checked;redraw()" style="margin:0" title="BG on/off"><input type="number" value="${a.fontSize}" style="width:30px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:3px;color:var(--text-primary);font-size:10px;text-align:center;padding:2px" onchange="annotations[${i}].fontSize=+this.value;redraw()"><button class="btn sm danger" onclick="saveUndo();annotations.splice(${i},1);updateAnnoList();redraw();" style="padding:2px 5px">✕</button></div>`).join('');
+}
+
+// ═══════════════ BG IMAGE ═══════════════
+function loadBgImage(input){const f=input.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{const img=new Image();img.onload=()=>{bgS.img=img;bgS.wx=cam.x;bgS.wy=cam.y;bgS.show=true;$('bgShow').checked=true;redraw();showToast('Image loaded');};img.src=e.target.result;};r.readAsDataURL(f);}
+function clearBgImage(){bgS.img=null;$('bgInput').value='';redraw();}
+
+// ═══════════════ CANVAS ═══════════════
+function initCanvas(){canvas=$('mapCanvas');ctx=canvas.getContext('2d');resizeCanvas();window.addEventListener('resize',resizeCanvas);}
+function resizeCanvas(){const c=$('canvasContainer'),w=c.clientWidth||800,h=c.clientHeight||600,d=window.devicePixelRatio||1;canvas.width=w*d;canvas.height=h*d;canvas.style.width=w+'px';canvas.style.height=h+'px';ctx.setTransform(d,0,0,d,0,0);redraw();}
+function w2s(wx,wy){const c=$('canvasContainer');return{x:c.clientWidth/2+(wx-cam.x)*cam.zoom,y:c.clientHeight/2-(wy-cam.y)*cam.zoom};}
+function s2w(sx,sy){const c=$('canvasContainer');return{x:cam.x+(sx-c.clientWidth/2)/cam.zoom,y:cam.y-(sy-c.clientHeight/2)/cam.zoom};}
+
+// ═══════════════ HIT TEST ═══════════════
+function getLabelPos(tract,ci){
+  const pts=tract.coords,p1=w2s(pts[ci].x,pts[ci].y),p2=w2s(pts[ci+1].x,pts[ci+1].y);
+  const mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2,call=tract.calls[ci];
+  if(call.labelOffset){const s=w2s(call.labelOffset.wx,call.labelOffset.wy);return{x:s.x,y:s.y,ax:mx,ay:my};}
+  const dx=p2.x-p1.x,dy=p2.y-p1.y,ang=Math.atan2(dy,dx),px=-Math.sin(ang),py=Math.cos(ang);
+  const ll=Math.sqrt(dx*dx+dy*dy),fs=tract.fontSize*Math.min(1,cam.zoom*2.5);
+  let lines=[];if(tract.numberCalls)lines.push('x');if(tract.showBearings)lines.push(call.bearingStr);if(tract.showDistances)lines.push('x');
+  const lw=lines.reduce((m,l)=>Math.max(m,l.length*fs*.55),0);
+  const ul=tract.leaderLines&&(ll<lw*1.2||ll<60),off=ul?Math.max(60,ll*.8):18;
+  return{x:mx+px*off,y:my+py*off,ax:mx,ay:my};
+}
+function getNamePos(t){if(t.nameOffset){const s=w2s(t.nameOffset.wx,t.nameOffset.wy);return s;}const c=centroid(t.coords),s=w2s(c.x,c.y);return{x:s.x,y:s.y+(t.parcelId?t.pidSize*2:0)};}
+function getPidPos(t){if(t.pidOffset){const s=w2s(t.pidOffset.wx,t.pidOffset.wy);return s;}return w2s(centroid(t.coords).x,centroid(t.coords).y);}
+function getLegendPos(W,H){if(legendPos.wx!==null)return w2s(legendPos.wx,legendPos.wy);return{x:20,y:H-20};}
+
+function hitTest(sx,sy){
+  // Legend
+  if($('mapShowLegend').checked&&tracts.length){const c=$('canvasContainer'),lp=getLegendPos(c.clientWidth,c.clientHeight);const lw=getLegendDims();if(sx>=lp.x&&sx<=lp.x+lw.w&&sy>=lp.y-lw.h&&sy<=lp.y)return{type:'legend'};}
+  for(let i=annotations.length-1;i>=0;i--){const s=w2s(annotations[i].wx,annotations[i].wy);if(Math.abs(sx-s.x)<60&&Math.abs(sy-s.y)<20)return{type:'anno',idx:i};}
+  for(let ti=tracts.length-1;ti>=0;ti--){
+    const t=tracts[ti];
+    const np=getNamePos(t);if(Math.abs(sx-np.x)<60&&Math.abs(sy-np.y)<16)return{type:'tname',tractIdx:ti};
+    if(t.parcelId){const pp=getPidPos(t);if(Math.abs(sx-pp.x)<60&&Math.abs(sy-pp.y)<16)return{type:'tpid',tractIdx:ti};}
+    for(let ci=0;ci<t.calls.length;ci++){const p=getLabelPos(t,ci);if(Math.abs(sx-p.x)<50&&Math.abs(sy-p.y)<30)return{type:'label',tractIdx:ti,callIdx:ci};}
+  }
+  if(bgS.img&&bgS.show){const bs=w2s(bgS.wx,bgS.wy),bw=bgS.img.width*bgS.scale*cam.zoom,bh=bgS.img.height*bgS.scale*cam.zoom;if(Math.abs(sx-bs.x)<bw/2&&Math.abs(sy-bs.y)<bh/2)return{type:'bg'};}
+  return null;
+}
+
+// ═══════════════ DRAWING ═══════════════
+function redraw(transparent){
+  if(!ctx)return;const c=$('canvasContainer'),W=c.clientWidth,H=c.clientHeight;
+  if(transparent){ctx.clearRect(0,0,W,H);}else{ctx.fillStyle=$('mapBg').value;ctx.fillRect(0,0,W,H);}
+  if(!transparent&&bgS.img&&bgS.show){
+    const s=w2s(bgS.wx,bgS.wy),iw=bgS.img.width*bgS.scale,ih=bgS.img.height*bgS.scale;
+    ctx.save();ctx.globalAlpha=bgS.alpha;ctx.translate(s.x,s.y);ctx.rotate((bgS.rotation+(bgS.rotFine||0))*Math.PI/180);
+    ctx.drawImage(bgS.img,-iw*cam.zoom/2,-ih*cam.zoom/2,iw*cam.zoom,ih*cam.zoom);ctx.restore();
+  }
+  if(!transparent&&$('mapShowGrid').checked)drawGrid(W,H);
+  for(let i=0;i<tracts.length;i++)drawTract(tracts[i],i===activeTractIdx);
+  drawAnnotations();
+  const mc=$('mapTextColor').value;
+  if($('mapShowNorth').checked)drawNorthArrow(W,H,mc);
+  if($('mapShowScale').checked)drawScaleBar(W,H,mc);
+  if($('mapShowLegend').checked&&tracts.length)drawLegend(W,H);
+  drawTitle(W,mc);
+  $('statusZoom').textContent=`Zoom: ${Math.round(cam.zoom*100)}%`;
+}
+
+function drawGrid(W,H){
+  let sp=100;while(sp*cam.zoom<40)sp*=2;while(sp*cam.zoom>200)sp/=2;
+  const tl=s2w(0,0),br=s2w(W,H);
+  ctx.strokeStyle=$('mapGrid').value;ctx.lineWidth=.5;
+  for(let x=Math.floor(Math.min(tl.x,br.x)/sp)*sp;x<=Math.ceil(Math.max(tl.x,br.x)/sp)*sp;x+=sp){const s=w2s(x,0);ctx.beginPath();ctx.moveTo(s.x,0);ctx.lineTo(s.x,H);ctx.stroke();}
+  for(let y=Math.floor(Math.min(tl.y,br.y)/sp)*sp;y<=Math.ceil(Math.max(tl.y,br.y)/sp)*sp;y+=sp){const s=w2s(0,y);ctx.beginPath();ctx.moveTo(0,s.y);ctx.lineTo(W,s.y);ctx.stroke();}
+}
+
+function drawEndpoint(x,y,shape,sz,color,angle){
+  ctx.fillStyle=color;ctx.strokeStyle=color;ctx.lineWidth=1;
+  if(shape==='circle'){ctx.beginPath();ctx.arc(x,y,sz,0,Math.PI*2);ctx.fill();}
+  else if(shape==='diamond'){ctx.save();ctx.translate(x,y);ctx.rotate(Math.PI/4);ctx.fillRect(-sz,-sz,sz*2,sz*2);ctx.restore();}
+  else if(shape==='triangle'){ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.beginPath();ctx.moveTo(sz,0);ctx.lineTo(-sz,-sz);ctx.lineTo(-sz,sz);ctx.closePath();ctx.fill();ctx.restore();}
+  else if(shape==='triangle-rev'){ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.beginPath();ctx.moveTo(-sz,0);ctx.lineTo(sz,-sz);ctx.lineTo(sz,sz);ctx.closePath();ctx.fill();ctx.restore();}
+  else if(shape==='arrow'){ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.beginPath();ctx.moveTo(sz+2,0);ctx.lineTo(-sz,-sz);ctx.moveTo(sz+2,0);ctx.lineTo(-sz,sz);ctx.lineWidth=1.5;ctx.stroke();ctx.restore();}
+}
+
+function drawTract(tract,isActive){
+  const pts=tract.coords;if(pts.length<2)return;
+  const sp=pts.map(p=>w2s(p.x,p.y));
+  // Fill
+  ctx.beginPath();sp.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));ctx.closePath();
+  ctx.globalAlpha=tract.alpha;ctx.fillStyle=tract.fillColor;ctx.fill();ctx.globalAlpha=1;
+  // Hatching
+  if(tract.hatching){ctx.save();ctx.beginPath();sp.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));ctx.closePath();ctx.clip();const b=getBounds(sp);ctx.strokeStyle='rgba(0,0,0,.3)';ctx.lineWidth=1;for(let d=b.minX-b.h;d<b.maxX+b.h;d+=12){ctx.beginPath();ctx.moveTo(d,b.minY);ctx.lineTo(d+b.h,b.maxY);ctx.stroke();}ctx.restore();}
+  // Stroke
+  if(tract.strokeWidth>0){ctx.beginPath();sp.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));ctx.closePath();ctx.strokeStyle=tract.strokeColor;ctx.lineWidth=isActive?tract.strokeWidth+1:tract.strokeWidth;ctx.stroke();}
+  // Call labels
+  const fs=tract.fontSize*Math.min(1,cam.zoom*2.5);
+  for(let i=0;i<tract.calls.length;i++){
+    const call=tract.calls[i];let lines=[];
+    if(tract.numberCalls)lines.push(`(${i+1})`);if(tract.showBearings)lines.push(call.bearingStr);if(tract.showDistances)lines.push(`${call.dist.toFixed(2)}'`);
+    if(!lines.length)continue;
+    const pos=getLabelPos(tract,i),mx=pos.ax||(sp[i].x+sp[i+1].x)/2,my=pos.ay||(sp[i].y+sp[i+1].y)/2;
+    const dx2=sp[i+1].x-sp[i].x,dy2=sp[i+1].y-sp[i].y,ll=Math.sqrt(dx2*dx2+dy2*dy2);
+    const lw=lines.reduce((m,l)=>Math.max(m,l.length*fs*.55),0);
+    const hasM=!!call.labelOffset, autoL=tract.leaderLines&&(ll<lw*1.2||ll<60);
+    if(hasM||autoL){
+      const lc=hexToRgb(tract.leaderColor);ctx.strokeStyle=`rgba(${lc.r},${lc.g},${lc.b},${tract.leaderAlpha})`;ctx.lineWidth=tract.leaderWidth;
+      ctx.beginPath();ctx.moveTo(mx,my);ctx.lineTo(pos.x,pos.y);ctx.stroke();
+      const ec=`rgba(${lc.r},${lc.g},${lc.b},${tract.leaderAlpha})`;
+      drawEndpoint(mx,my,tract.leaderEnd,3.5,ec,Math.atan2(pos.y-my,pos.x-mx));
+    }
+    let ta=(call.labelRotation||0)*Math.PI/180;
+    if(!hasM&&!autoL){ta=Math.atan2(dy2,dx2)+(call.labelRotation||0)*Math.PI/180;if(ta>Math.PI/2)ta-=Math.PI;if(ta<-Math.PI/2)ta+=Math.PI;}
+    ctx.save();ctx.translate(pos.x,pos.y);ctx.rotate(ta);
+    const lh=fs*1.3,th=lines.length*lh;ctx.font=`500 ${fs}px 'JetBrains Mono',monospace`;
+    const mw=lines.reduce((m,l)=>Math.max(m,ctx.measureText(l).width),0),pad=4;
+    if(tract.showLabelBg){const bg=hexToRgb(tract.labelBg);ctx.fillStyle=`rgba(${bg.r},${bg.g},${bg.b},${tract.labelBgAlpha})`;roundRect(ctx,-mw/2-pad,-th/2-pad,mw+pad*2,th+pad*2,3);ctx.fill();}
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    lines.forEach((line,li)=>{const ly=-th/2+lh*(li+.5);if(li===0&&tract.numberCalls){ctx.fillStyle='#4a7cff';ctx.font=`700 ${fs}px 'JetBrains Mono',monospace`;}else{ctx.fillStyle=tract.labelColor;ctx.font=`500 ${fs}px 'JetBrains Mono',monospace`;}ctx.fillText(line,0,ly);});
+    ctx.restore();
+  }
+  // Corner markers
+  for(let i=0;i<pts.length-1;i++){ctx.beginPath();ctx.arc(sp[i].x,sp[i].y,4,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();if(tract.strokeWidth>0){ctx.strokeStyle=tract.strokeColor;ctx.lineWidth=1.5;ctx.stroke();}}
+  // Parcel ID
+  if(tract.parcelId){
+    const pp=getPidPos(tract),idFs=tract.pidSize*Math.min(1,cam.zoom*2.5);
+    ctx.save();ctx.translate(pp.x,pp.y);ctx.rotate((tract.pidRotation||0)*Math.PI/180);
+    ctx.font=`700 ${idFs}px 'JetBrains Mono',monospace`;const tw=ctx.measureText(tract.parcelId).width;
+    if(tract.pidShowBg){const bg=hexToRgb(tract.pidBg);ctx.fillStyle=`rgba(${bg.r},${bg.g},${bg.b},${tract.pidBgAlpha})`;roundRect(ctx,-tw/2-10,-idFs/2-6,tw+20,idFs+12,6);ctx.fill();}
+    ctx.fillStyle=tract.pidColor;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(tract.parcelId,0,0);ctx.restore();
+  }
+  // Tract name
+  const np=getNamePos(tract),nFs=tract.nameSize*Math.min(1,cam.zoom*2.5);
+  ctx.save();ctx.translate(np.x,np.y);ctx.rotate((tract.nameRotation||0)*Math.PI/180);
+  ctx.font=`600 ${nFs}px Inter,sans-serif`;
+  if(tract.nameShowBg){const tw2=ctx.measureText(tract.name).width;const bg=hexToRgb(tract.nameBg);ctx.fillStyle=`rgba(${bg.r},${bg.g},${bg.b},${tract.nameBgAlpha})`;roundRect(ctx,-tw2/2-8,-nFs/2-4,tw2+16,nFs+8,4);ctx.fill();}
+  ctx.fillStyle=tract.nameColor;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(tract.name,0,0);ctx.restore();
+}
+
+function drawAnnotations(){for(const a of annotations){const s=w2s(a.wx,a.wy),fs=a.fontSize*Math.min(1.5,cam.zoom*3);ctx.save();ctx.translate(s.x,s.y);ctx.rotate((a.rotation||0)*Math.PI/180);ctx.font=`600 ${fs}px 'JetBrains Mono',monospace`;const tw=ctx.measureText(a.text).width;if(a.showBg){const bg=hexToRgb(a.bgColor);ctx.fillStyle=`rgba(${bg.r},${bg.g},${bg.b},${a.bgAlpha})`;roundRect(ctx,-tw/2-6,-fs/2-4,tw+12,fs+8,4);ctx.fill();}ctx.fillStyle=a.color;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(a.text,0,0);ctx.restore();}}
+
+function drawNorthArrow(W,H,color){ctx.save();ctx.translate(W-50,80);ctx.beginPath();ctx.moveTo(0,-25);ctx.lineTo(8,5);ctx.lineTo(-8,5);ctx.closePath();ctx.fillStyle=color;ctx.globalAlpha=.85;ctx.fill();ctx.globalAlpha=1;ctx.font="700 14px 'JetBrains Mono',monospace";ctx.fillStyle=color;ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText('N',0,10);ctx.restore();}
+
+function drawScaleBar(W,H,color){
+  let bf=100;for(const o of[50,100,200,500,1000,2000,5000])if(o*cam.zoom>60&&o*cam.zoom<200){bf=o;break;}
+  const bp=bf*cam.zoom,x=W-50-bp,y=H-30;
+  ctx.strokeStyle=color;ctx.globalAlpha=.75;ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+bp,y);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x,y-6);ctx.lineTo(x,y+6);ctx.moveTo(x+bp,y-6);ctx.lineTo(x+bp,y+6);ctx.stroke();
+  ctx.font="600 11px 'JetBrains Mono',monospace";ctx.fillStyle=color;ctx.textAlign='center';ctx.fillText(`${bf} ft`,x+bp/2,y-10);ctx.globalAlpha=1;
+}
+
+function drawTitle(W,color){
+  const title=$('mapTitle').value,sub=$('mapSubtitle').value;if(!title&&!sub)return;
+  let x=20,y=24;
+  if(title){ctx.font="700 16px Inter,sans-serif";ctx.fillStyle=color;ctx.globalAlpha=.9;ctx.textAlign='left';ctx.fillText(title,x,y);ctx.globalAlpha=1;y+=20;}
+  if(sub){ctx.font="400 12px Inter,sans-serif";ctx.fillStyle=color;ctx.globalAlpha=.5;ctx.fillText(sub,x,y);ctx.globalAlpha=1;}
+}
+
+// Legend box
+function getLegendDims(){
+  if(!tracts.length)return{w:0,h:0};
+  const fs=10,lh=14,pad=12;let lines=0;
+  for(const t of tracts){lines+=2;lines+=t.calls.length;lines+=3;} // name, separator, calls, stats
+  return{w:280,h:lines*lh+pad*2};
+}
+
+function drawLegend(W,H){
+  const lp=getLegendPos(W,H), dim=getLegendDims();
+  const x=lp.x, y=lp.y-dim.h;
+  // Box
+  ctx.save();
+  ctx.fillStyle='rgba(255,255,255,0.95)';
+  ctx.strokeStyle='rgba(0,0,0,0.3)';ctx.lineWidth=1;
+  roundRect(ctx,x,y,dim.w,dim.h,8);ctx.fill();ctx.stroke();
+  // Content
+  ctx.font="600 10px 'JetBrains Mono',monospace";ctx.fillStyle='#111';ctx.textAlign='left';ctx.textBaseline='top';
+  let cy=y+10;const lh=14,px=x+12;
+  for(const t of tracts){
+    ctx.font="700 11px 'JetBrains Mono',monospace";ctx.fillStyle='#111';
+    ctx.fillText(t.name,px,cy);cy+=lh;
+    const area=computeArea(t.coords),ce=closureError(t.coords),perim=t.calls.reduce((s,c)=>s+c.dist,0),ratio=ce>0.001?`1:${Math.round(perim/ce)}`:'PERFECT';
+    ctx.font="500 10px 'JetBrains Mono',monospace";ctx.fillStyle='#444';
+    ctx.fillText(`Area: ${area.toFixed(4)} ac  |  Stated: ${t.name.match(/[\d.]+/)?.[0]||'—'} ac`,px,cy);cy+=lh;
+    ctx.fillStyle='#333';ctx.font="500 10px 'JetBrains Mono',monospace";
+    for(const c of t.calls){ctx.fillText(`${c.bearingStr}  ${c.dist.toFixed(2)} ft`,px,cy);cy+=lh;}
+    ctx.fillStyle='#666';ctx.fillText(`Closure: ${ce.toFixed(4)}' (${ratio})`,px,cy);cy+=lh;
+    cy+=4;
+  }
+  ctx.restore();
+}
+
+// ═══════════════ HELPERS ═══════════════
+function roundRect(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.quadraticCurveTo(x+w,y,x+w,y+r);c.lineTo(x+w,y+h-r);c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);c.lineTo(x+r,y+h);c.quadraticCurveTo(x,y+h,x,y+h-r);c.lineTo(x,y+r);c.quadraticCurveTo(x,y,x+r,y);c.closePath();}
+function getBounds(pts){let a=Infinity,b=-Infinity,c=Infinity,d=-Infinity;for(const p of pts){a=Math.min(a,p.x);b=Math.max(b,p.x);c=Math.min(c,p.y);d=Math.max(d,p.y);}return{minX:a,maxX:b,minY:c,maxY:d,w:b-a,h:d-c};}
+function hexToRgb(h){return{r:parseInt(h.slice(1,3),16),g:parseInt(h.slice(3,5),16),b:parseInt(h.slice(5,7),16)};}
+function fitToView(){if(!tracts.length){redraw();return;}let ap=[];for(const t of tracts)ap.push(...t.coords);if(!ap.length){redraw();return;}const b=getBounds(ap),c=$('canvasContainer'),W=c.clientWidth||800,H=c.clientHeight||600;cam.zoom=Math.min(W*.7/(b.w||1),H*.7/(b.h||1));cam.x=(b.minX+b.maxX)/2;cam.y=(b.minY+b.maxY)/2;redraw();}
+
+function exportPNG(transparent){
+  if(transparent){
+    // Re-render without bg/grid, capture transparent
+    const c=$('canvasContainer'),W=c.clientWidth,H=c.clientHeight;
+    const tmpCanvas=document.createElement('canvas');
+    const dpr=window.devicePixelRatio||1;
+    tmpCanvas.width=W*dpr;tmpCanvas.height=H*dpr;
+    const origCtx=ctx;const origCanvas=canvas;
+    ctx=tmpCanvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
+    canvas=tmpCanvas;
+    redraw(true);
+    const link=document.createElement('a');link.download='parcel_map_transparent.png';link.href=tmpCanvas.toDataURL('image/png');link.click();
+    ctx=origCtx;canvas=origCanvas;
+    redraw();showToast('Transparent PNG exported!');
+  }else{
+    const link=document.createElement('a');link.download='parcel_map.png';link.href=canvas.toDataURL('image/png');link.click();showToast('PNG exported!');
+  }
+}
+
+function showToast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000);}
+function togglePanel(h){h.classList.toggle('collapsed');h.nextElementSibling.classList.toggle('collapsed');}
+
+// ═══════════════ INTERACTION ═══════════════
+function setupInteraction(){
+  const container=$('canvasContainer');
+  container.addEventListener('mousedown',e=>{
+    const rect=canvas.getBoundingClientRect(),sx=e.clientX-rect.left,sy=e.clientY-rect.top;
+    const hit=hitTest(sx,sy);
+    if(hit){
+      saveUndo();dragTarget=hit;
+      if(hit.type==='anno'){const s=w2s(annotations[hit.idx].wx,annotations[hit.idx].wy);dragOffset={x:sx-s.x,y:sy-s.y};}
+      else if(hit.type==='label'){const p=getLabelPos(tracts[hit.tractIdx],hit.callIdx);dragOffset={x:sx-p.x,y:sy-p.y};}
+      else if(hit.type==='tname'){const p=getNamePos(tracts[hit.tractIdx]);dragOffset={x:sx-p.x,y:sy-p.y};}
+      else if(hit.type==='tpid'){const p=getPidPos(tracts[hit.tractIdx]);dragOffset={x:sx-p.x,y:sy-p.y};}
+      else if(hit.type==='bg'){const s=w2s(bgS.wx,bgS.wy);dragOffset={x:sx-s.x,y:sy-s.y};}
+      else if(hit.type==='legend'){const lp=getLegendPos($('canvasContainer').clientWidth,$('canvasContainer').clientHeight);dragOffset={x:sx-lp.x,y:sy-lp.y};}
+      container.style.cursor='move';e.preventDefault();return;
+    }
+    isDragging=true;dragStart={x:e.clientX,y:e.clientY};container.style.cursor='grabbing';
+  });
+  window.addEventListener('mousemove',e=>{
+    const rect=canvas.getBoundingClientRect(),sx=e.clientX-rect.left,sy=e.clientY-rect.top;
+    const w=s2w(sx,sy);$('statusCoords').textContent=`X: ${w.x.toFixed(1)}  Y: ${w.y.toFixed(1)}`;
+    if(dragTarget){
+      const tx=sx-dragOffset.x,ty=sy-dragOffset.y;
+      if(dragTarget.type==='legend'){
+        // Legend uses screen-anchored position, convert to world for persistence
+        const wc=s2w(tx,ty+getLegendDims().h);legendPos={wx:wc.x,wy:wc.y};
+      }else{
+        const wc=s2w(tx,ty);
+        if(dragTarget.type==='anno'){annotations[dragTarget.idx].wx=wc.x;annotations[dragTarget.idx].wy=wc.y;}
+        else if(dragTarget.type==='label'){tracts[dragTarget.tractIdx].calls[dragTarget.callIdx].labelOffset={wx:wc.x,wy:wc.y};}
+        else if(dragTarget.type==='tname'){tracts[dragTarget.tractIdx].nameOffset={wx:wc.x,wy:wc.y};}
+        else if(dragTarget.type==='tpid'){tracts[dragTarget.tractIdx].pidOffset={wx:wc.x,wy:wc.y};}
+        else if(dragTarget.type==='bg'){bgS.wx=wc.x;bgS.wy=wc.y;}
+      }
+      redraw();return;
+    }
+    if(!isDragging){container.style.cursor=hitTest(sx,sy)?'move':'grab';return;}
+    cam.x-=(e.clientX-dragStart.x)/cam.zoom;cam.y+=(e.clientY-dragStart.y)/cam.zoom;
+    dragStart={x:e.clientX,y:e.clientY};redraw();
+  });
+  window.addEventListener('mouseup',()=>{isDragging=false;dragTarget=null;$('canvasContainer').style.cursor='grab';});
+
+  container.addEventListener('wheel',e=>{
+    e.preventDefault();const rect=canvas.getBoundingClientRect(),sx=e.clientX-rect.left,sy=e.clientY-rect.top;
+    const hit=hitTest(sx,sy);
+    if(hit&&(hit.type==='label'||hit.type==='anno'||hit.type==='tname'||hit.type==='tpid')){
+      saveUndo();const d=e.deltaY>0?-3:3;
+      if(hit.type==='anno')annotations[hit.idx].rotation=(annotations[hit.idx].rotation||0)+d;
+      else if(hit.type==='label')tracts[hit.tractIdx].calls[hit.callIdx].labelRotation=(tracts[hit.tractIdx].calls[hit.callIdx].labelRotation||0)+d;
+      else if(hit.type==='tname')tracts[hit.tractIdx].nameRotation=(tracts[hit.tractIdx].nameRotation||0)+d;
+      else if(hit.type==='tpid')tracts[hit.tractIdx].pidRotation=(tracts[hit.tractIdx].pidRotation||0)+d;
+      redraw();return;
+    }
+    const f=e.deltaY>0?.9:1.1,before=s2w(sx,sy);cam.zoom*=f;cam.zoom=Math.max(.01,Math.min(10,cam.zoom));const after=s2w(sx,sy);cam.x-=(after.x-before.x);cam.y-=(after.y-before.y);redraw();
+  },{passive:false});
+
+  container.addEventListener('dblclick',e=>{
+    const rect=canvas.getBoundingClientRect(),sx=e.clientX-rect.left,sy=e.clientY-rect.top;const hit=hitTest(sx,sy);if(!hit)return;saveUndo();
+    if(hit.type==='label'){tracts[hit.tractIdx].calls[hit.callIdx].labelOffset=null;tracts[hit.tractIdx].calls[hit.callIdx].labelRotation=0;}
+    else if(hit.type==='tname'){tracts[hit.tractIdx].nameOffset=null;tracts[hit.tractIdx].nameRotation=0;}
+    else if(hit.type==='tpid'){tracts[hit.tractIdx].pidOffset=null;tracts[hit.tractIdx].pidRotation=0;}
+    else if(hit.type==='anno'){annotations[hit.idx].rotation=0;}
+    else if(hit.type==='legend'){legendPos={wx:null,wy:null};}
+    redraw();showToast('Reset');
+  });
+
+  document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='z'){e.preventDefault();doUndo();}if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();parseDeed();}});
+}
+
+// ═══════════════ EXAMPLE ═══════════════
+function loadExample(){
+  $('deedInput').value=`Situated in Amanda Township, Fairfield County, Ohio, and being in Section 7, Township 13 North, Range 20 West, and bounded and described as follows:
+Beginning at a railroad spike found in State Route 675 at the northwest corner of Section 7; thence North 89°56'00" East, with said section and property line, 1517.24 feet to a 3/4-inch iron pipe found; thence South 00°10'52" West, with the Kilman and Stebelton property line, 1376.20 feet to a 3/4-inch pipe set; thence South 43°04'38" West 1746.78 feet to a point; thence South 89°58'10" West 322.00 feet with the north line of said 1.0-acre tract; thence North 00°02'46" East 2650.51 feet, in State Route 674 to the place of beginning, containing 74.74 acres, more or less.
+EXCEPTING THEREFROM:
+A parcel containing 0.3788 acres; thence South 85°00'30" East a distance of 30.00 feet; thence South 06°19'06" East a distance of 101.98 feet; thence South 04°59'30" West a distance of 25.00 feet; thence South 10°42'08" West a distance of 100.50 feet; thence South 04°59'30" West a distance of 125.00 feet; thence South 16°18'06" West a distance of 50.99 feet; thence North 85°00'30" West a distance of 30.00 feet; thence North 04°59'30" East a distance of 400.00 feet to the point of beginning.`;
+  $('mapTitle').value='Parcel Map — Section 7, Amanda Township';
+  $('mapSubtitle').value='Fairfield County, Ohio · T13N, R20W';
+  clearTracts();parseDeed();
+  if(tracts.length>0){tracts[0].parcelId='0020052900';tracts[0].name='74.74 AC PARCEL (main tract)';}
+  if(tracts.length>1){tracts[1].name='0.3788 AC EXCEPTION (Road R/W)';}
+  selectTract(0);fitToView();setTimeout(fitToView,200);
+}
+
+// ═══════════════ INIT ═══════════════
+window.addEventListener('DOMContentLoaded',()=>{initCanvas();setupInteraction();redraw();setTimeout(()=>{resizeCanvas();redraw();},100);setTimeout(()=>{resizeCanvas();redraw();},500);});
+window.addEventListener('load',()=>{resizeCanvas();redraw();});
+</script>
+</body>
+</html>
