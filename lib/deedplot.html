@@ -242,23 +242,28 @@ function doUndo(){
 function makeToRad(q,d,m,s,dir){return function(){const dd=d+m/60+s/3600;if(q==='N'&&dir==='E')return(90-dd)*Math.PI/180;if(q==='N'&&dir==='W')return(90+dd)*Math.PI/180;if(q==='S'&&dir==='E')return(270+dd)*Math.PI/180;if(q==='S'&&dir==='W')return(270-dd)*Math.PI/180;return 0;};}
 
 function parseDistance(text){
-  // Match distance with units: feet, ft, chains, ch, links, lks, or bare number (assume feet)
+  // Match distance with units — supports all common survey measurements
   // Handles fractions like "6.48 1/2"
-  const dm=text.match(/(?:a\s+distance\s+of\s+)?(\d[\d,]*(?:\.\d+)?)\s*(?:(\d+)\s*\/\s*(\d+))?\s*(feet|foot|ft|chains?|ch|links?|lks?|rods?|rd|')?/i);
+  const dm=text.match(/(?:a\s+distance\s+of\s+)?(\d[\d,]*(?:\.\d+)?)\s*(?:(\d+)\s*\/\s*(\d+))?\s*(feet|foot|ft|chains?|ch|links?|lks?|rods?|rd|perch(?:es)?|poles?|varas?|meters?|m|yards?|yd|')?/i);
   if(!dm)return null;
   let val=parseFloat(dm[1].replace(/,/g,''));
-  if(dm[2]&&dm[3]) val+=parseInt(dm[2])/parseInt(dm[3]); // fraction like 1/2
+  if(dm[2]&&dm[3]) val+=parseInt(dm[2])/parseInt(dm[3]);
   const unit=(dm[4]||'ft').toLowerCase();
-  // Convert to feet
   if(unit.startsWith('chain')||unit==='ch') val*=66;
   else if(unit.startsWith('link')||unit==='lks'||unit==='lk') val*=0.66;
   else if(unit.startsWith('rod')||unit==='rd') val*=16.5;
+  else if(unit.startsWith('perch')) val*=16.5;
+  else if(unit.startsWith('pole')) val*=16.5;
+  else if(unit.startsWith('vara')) val*=2.778;
+  else if(unit.startsWith('meter')||unit==='m') val*=3.28084;
+  else if(unit.startsWith('yard')||unit==='yd') val*=3;
   return val;
 }
 
 function parseBearing(text){
-  const t=text.replace(/North/gi,'N').replace(/South/gi,'S').replace(/East/gi,'E').replace(/West/gi,'W')
-    .replace(/[''′]/g,"'").replace(/[""″]/g,'"').replace(/[°˚]/g,'°');
+  let t=text.replace(/North/gi,'N').replace(/South/gi,'S').replace(/East/gi,'E').replace(/West/gi,'W')
+    .replace(/[''′]/g,"'").replace(/[""″]/g,'"').replace(/[°˚]/g,'°')
+    .replace(/Due\s+/gi,'');
 
   let quad,deg,min=0,sec=0,dir,afterBearing;
 
