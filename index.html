@@ -129,7 +129,8 @@ kbd{background:var(--bg-primary);border:1px solid var(--border);border-radius:3p
 
         <div class="section-label">Point of Beginning</div>
         <div class="input-row"><label>POB X</label><input class="input-sm" id="propPobX" type="number" step="0.01" value="0" onchange="updatePOB()"><label style="min-width:auto">Y</label><input class="input-sm" id="propPobY" type="number" step="0.01" value="0" onchange="updatePOB()"></div>
-        <div class="help-text">Set starting coordinates or drag the tract on the map to reposition.</div>
+        <div class="input-row"><label>Rotation</label><input type="range" id="propTractRot" min="-180" max="180" value="0" step="0.5" oninput="updateTractRotation(+this.value)"><input class="input-sm" id="propTractRotVal" type="number" step="0.1" value="0" style="width:55px;flex:none" onchange="updateTractRotation(+this.value)"><span style="font-size:10px;color:var(--text-muted)">°</span></div>
+        <div class="help-text">Drag tract to move. <kbd>Shift</kbd>+<kbd>Scroll</kbd> on tract to rotate.</div>
 
         <div class="section-label">Parcel Fill &amp; Stroke</div>
         <div class="input-row"><label>Fill</label><input type="color" id="propFill" value="#CDDC39" oninput="updateProp('fillColor',this.value)"><label style="min-width:auto">Opacity</label><input type="range" id="propAlpha" min="0" max="100" value="65" oninput="updateProp('alpha',this.value/100)"></div>
@@ -210,7 +211,7 @@ kbd{background:var(--bg-primary);border:1px solid var(--border);border-radius:3p
     <span class="sep">│</span><span id="statusCoords">X: 0  Y: 0</span>
     <span class="sep">│</span><span id="statusZoom">Zoom: 100%</span>
     <span class="sep">│</span><span id="statusTracts">Tracts: 0</span>
-    <span style="margin-left:auto"><kbd>Scroll</kbd> zoom · <kbd>Ctrl+Z</kbd> undo</span>
+    <span style="margin-left:auto"><kbd>Scroll</kbd> zoom · <kbd>Shift+Scroll</kbd> rotate tract · <kbd>Ctrl+Z</kbd> undo</span>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -238,7 +239,7 @@ function doUndo(){
   if(!undoStack.length){showToast('Nothing to undo');return;}
   const s=undoStack.pop();
   annotations=s.annotations;activeTractIdx=s.activeTractIdx;legendPos=s.legendPos;
-  tracts=s.tracts.map(t=>{t.calls=t.calls.map(c=>{c.toRad=makeToRad(c.quad,c.deg,c.min,c.sec,c.dir);return c;});t.coords=callsToCoords(t.calls,t.pobX||0,t.pobY||0);return t;});
+  tracts=s.tracts.map(t=>{t.calls=t.calls.map(c=>{c.toRad=makeToRad(c.quad,c.deg,c.min,c.sec,c.dir);return c;});recomputeRotatedCoords(t);return t;});
   updateTractList();updateProps();updateCallSchedule();updateAnnoList();redraw();showToast('Undo');
 }
 
@@ -329,7 +330,7 @@ function closureError(pts){const s=pts[0],e=pts[pts.length-1];return Math.sqrt((
 const defColors=['#CDDC39','#EF9A9A','#81D4FA','#A5D6A7','#FFE082','#CE93D8','#80CBC4'];
 function createTract(calls,name,pobX=0,pobY=0){
   return{name:name||`Tract ${tracts.length+1}`,parcelId:'',calls,coords:callsToCoords(calls,pobX,pobY),
-    pobX,pobY,
+    pobX,pobY,tractRotation:0,
     fillColor:defColors[tracts.length%defColors.length],alpha:0.65,
     strokeColor:'#000000',strokeWidth:3,
     fontSize:12,labelColor:'#e4e7ef',labelBg:'#0f1117',labelBgAlpha:0.85,showLabelBg:true,
@@ -409,14 +410,40 @@ function updatePOB(){
   const t=tracts[activeTractIdx];
   t.pobX=parseFloat($('propPobX').value)||0;
   t.pobY=parseFloat($('propPobY').value)||0;
-  t.coords=callsToCoords(t.calls,t.pobX,t.pobY);
+  recomputeRotatedCoords(t);
   updateTractList();redraw();
+}
+
+function updateTractRotation(deg){
+  if(activeTractIdx<0)return;saveUndo();
+  const t=tracts[activeTractIdx];
+  t.tractRotation=deg;
+  $('propTractRot').value=deg;$('propTractRotVal').value=deg;
+  recomputeRotatedCoords(t);
+  updateTractList();redraw();
+}
+
+function recomputeRotatedCoords(t){
+  // Compute base coords from calls + POB
+  const base=callsToCoords(t.calls,t.pobX,t.pobY);
+  if(!t.tractRotation){t.coords=base;return;}
+  // Rotate around centroid of base
+  const n=base.length-1;let cx=0,cy=0;
+  for(let i=0;i<n;i++){cx+=base[i].x;cy+=base[i].y;}
+  cx/=n;cy/=n;
+  const rad=t.tractRotation*Math.PI/180;
+  const cosR=Math.cos(rad),sinR=Math.sin(rad);
+  t.coords=base.map(p=>{
+    const dx=p.x-cx,dy=p.y-cy;
+    return{x:cx+dx*cosR-dy*sinR, y:cy+dx*sinR+dy*cosR};
+  });
 }
 
 function updateProps(){
   if(activeTractIdx<0)return;const t=tracts[activeTractIdx];
   $('propName').value=t.name;$('propParcelId').value=t.parcelId;
   $('propPobX').value=t.pobX||0;$('propPobY').value=t.pobY||0;
+  $('propTractRot').value=t.tractRotation||0;$('propTractRotVal').value=t.tractRotation||0;
   $('propFill').value=t.fillColor;$('propAlpha').value=Math.round(t.alpha*100);
   $('propStroke').value=t.strokeColor;$('propStrokeW').value=t.strokeWidth;$('strokeWVal').textContent=t.strokeWidth;
   $('propNameColor').value=t.nameColor;$('propNameSize').value=t.nameSize;$('nameSizeVal').textContent=t.nameSize;
@@ -712,8 +739,9 @@ function setupInteraction(){
         else if(dragTarget.type==='bg'){bgS.wx=wc.x;bgS.wy=wc.y;}
         else if(dragTarget.type==='tract'){
           const t=tracts[dragTarget.tractIdx];
-          t.pobX=wc.x-dragOffset.x;t.pobY=wc.y-dragOffset.y;
-          t.coords=callsToCoords(t.calls,t.pobX,t.pobY);
+          const wNow=s2w(sx,sy);
+          t.pobX=wNow.x-dragOffset.x;t.pobY=wNow.y-dragOffset.y;
+          recomputeRotatedCoords(t);
           if(dragTarget.tractIdx===activeTractIdx){$('propPobX').value=t.pobX.toFixed(2);$('propPobY').value=t.pobY.toFixed(2);}
         }
       }
@@ -728,7 +756,17 @@ function setupInteraction(){
   container.addEventListener('wheel',e=>{
     e.preventDefault();const rect=canvas.getBoundingClientRect(),sx=e.clientX-rect.left,sy=e.clientY-rect.top;
     const hit=hitTest(sx,sy);
-    if(hit&&(hit.type==='label'||hit.type==='anno'||hit.type==='tname'||hit.type==='tpid')){
+    // Shift+scroll on tract = rotate tract
+    if(e.shiftKey&&hit&&hit.type==='tract'){
+      saveUndo();const d=e.deltaY>0?-1:1;
+      const t=tracts[hit.tractIdx];
+      t.tractRotation=(t.tractRotation||0)+d;
+      recomputeRotatedCoords(t);
+      if(hit.tractIdx===activeTractIdx){$('propTractRot').value=t.tractRotation;$('propTractRotVal').value=t.tractRotation;}
+      redraw();return;
+    }
+    // Plain scroll on label/anno/tname/tpid = rotate that element
+    if(!e.shiftKey&&hit&&(hit.type==='label'||hit.type==='anno'||hit.type==='tname'||hit.type==='tpid')){
       saveUndo();const d=e.deltaY>0?-3:3;
       if(hit.type==='anno')annotations[hit.idx].rotation=(annotations[hit.idx].rotation||0)+d;
       else if(hit.type==='label')tracts[hit.tractIdx].calls[hit.callIdx].labelRotation=(tracts[hit.tractIdx].calls[hit.callIdx].labelRotation||0)+d;
@@ -736,6 +774,7 @@ function setupInteraction(){
       else if(hit.type==='tpid')tracts[hit.tractIdx].pidRotation=(tracts[hit.tractIdx].pidRotation||0)+d;
       redraw();return;
     }
+    // Otherwise = zoom
     const f=e.deltaY>0?.9:1.1,before=s2w(sx,sy);cam.zoom*=f;cam.zoom=Math.max(.01,Math.min(10,cam.zoom));const after=s2w(sx,sy);cam.x-=(after.x-before.x);cam.y-=(after.y-before.y);redraw();
   },{passive:false});
 
@@ -746,6 +785,7 @@ function setupInteraction(){
     else if(hit.type==='tpid'){tracts[hit.tractIdx].pidOffset=null;tracts[hit.tractIdx].pidRotation=0;}
     else if(hit.type==='anno'){annotations[hit.idx].rotation=0;}
     else if(hit.type==='legend'){legendPos={wx:null,wy:null};}
+    else if(hit.type==='tract'){tracts[hit.tractIdx].tractRotation=0;recomputeRotatedCoords(tracts[hit.tractIdx]);if(hit.tractIdx===activeTractIdx){$('propTractRot').value=0;$('propTractRotVal').value=0;}}
     redraw();showToast('Reset');
   });
 
