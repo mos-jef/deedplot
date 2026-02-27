@@ -127,6 +127,10 @@ kbd{background:var(--bg-primary);border:1px solid var(--border);border-radius:3p
         <div class="input-row"><label>Name</label><input class="input-sm" id="propName" oninput="updateProp('name',this.value)"></div>
         <div class="input-row"><label>Parcel ID</label><input class="input-sm" id="propParcelId" oninput="updateProp('parcelId',this.value)"></div>
 
+        <div class="section-label">Point of Beginning</div>
+        <div class="input-row"><label>POB X</label><input class="input-sm" id="propPobX" type="number" step="0.01" value="0" onchange="updatePOB()"><label style="min-width:auto">Y</label><input class="input-sm" id="propPobY" type="number" step="0.01" value="0" onchange="updatePOB()"></div>
+        <div class="help-text">Set starting coordinates or drag the tract on the map to reposition.</div>
+
         <div class="section-label">Parcel Fill &amp; Stroke</div>
         <div class="input-row"><label>Fill</label><input type="color" id="propFill" value="#CDDC39" oninput="updateProp('fillColor',this.value)"><label style="min-width:auto">Opacity</label><input type="range" id="propAlpha" min="0" max="100" value="65" oninput="updateProp('alpha',this.value/100)"></div>
         <div class="input-row"><label>Stroke</label><input type="color" id="propStroke" value="#000000" oninput="updateProp('strokeColor',this.value)"><label style="min-width:auto">W</label><input type="range" id="propStrokeW" min="0" max="8" value="3" oninput="updateProp('strokeWidth',+this.value)"><span id="strokeWVal" style="font-size:10px;color:var(--text-muted);min-width:14px">3</span></div>
@@ -234,7 +238,7 @@ function doUndo(){
   if(!undoStack.length){showToast('Nothing to undo');return;}
   const s=undoStack.pop();
   annotations=s.annotations;activeTractIdx=s.activeTractIdx;legendPos=s.legendPos;
-  tracts=s.tracts.map(t=>{t.calls=t.calls.map(c=>{c.toRad=makeToRad(c.quad,c.deg,c.min,c.sec,c.dir);return c;});t.coords=callsToCoords(t.calls);return t;});
+  tracts=s.tracts.map(t=>{t.calls=t.calls.map(c=>{c.toRad=makeToRad(c.quad,c.deg,c.min,c.sec,c.dir);return c;});t.coords=callsToCoords(t.calls,t.pobX||0,t.pobY||0);return t;});
   updateTractList();updateProps();updateCallSchedule();updateAnnoList();redraw();showToast('Undo');
 }
 
@@ -323,8 +327,9 @@ function closureError(pts){const s=pts[0],e=pts[pts.length-1];return Math.sqrt((
 
 // ═══════════════ TRACTS ═══════════════
 const defColors=['#CDDC39','#EF9A9A','#81D4FA','#A5D6A7','#FFE082','#CE93D8','#80CBC4'];
-function createTract(calls,name){
-  return{name:name||`Tract ${tracts.length+1}`,parcelId:'',calls,coords:callsToCoords(calls),
+function createTract(calls,name,pobX=0,pobY=0){
+  return{name:name||`Tract ${tracts.length+1}`,parcelId:'',calls,coords:callsToCoords(calls,pobX,pobY),
+    pobX,pobY,
     fillColor:defColors[tracts.length%defColors.length],alpha:0.65,
     strokeColor:'#000000',strokeWidth:3,
     fontSize:12,labelColor:'#e4e7ef',labelBg:'#0f1117',labelBgAlpha:0.85,showLabelBg:true,
@@ -399,9 +404,19 @@ function updateProp(key,val){
   updateTractList();redraw();
 }
 
+function updatePOB(){
+  if(activeTractIdx<0)return;saveUndo();
+  const t=tracts[activeTractIdx];
+  t.pobX=parseFloat($('propPobX').value)||0;
+  t.pobY=parseFloat($('propPobY').value)||0;
+  t.coords=callsToCoords(t.calls,t.pobX,t.pobY);
+  updateTractList();redraw();
+}
+
 function updateProps(){
   if(activeTractIdx<0)return;const t=tracts[activeTractIdx];
   $('propName').value=t.name;$('propParcelId').value=t.parcelId;
+  $('propPobX').value=t.pobX||0;$('propPobY').value=t.pobY||0;
   $('propFill').value=t.fillColor;$('propAlpha').value=Math.round(t.alpha*100);
   $('propStroke').value=t.strokeColor;$('propStrokeW').value=t.strokeWidth;$('strokeWVal').textContent=t.strokeWidth;
   $('propNameColor').value=t.nameColor;$('propNameSize').value=t.nameSize;$('nameSizeVal').textContent=t.nameSize;
@@ -480,6 +495,11 @@ function hitTest(sx,sy){
     for(let ci=0;ci<t.calls.length;ci++){const p=getLabelPos(t,ci);if(Math.abs(sx-p.x)<50&&Math.abs(sy-p.y)<30)return{type:'label',tractIdx:ti,callIdx:ci};}
   }
   if(bgS.img&&bgS.show){const bs=w2s(bgS.wx,bgS.wy),bw=bgS.img.width*bgS.scale*cam.zoom,bh=bgS.img.height*bgS.scale*cam.zoom;if(Math.abs(sx-bs.x)<bw/2&&Math.abs(sy-bs.y)<bh/2)return{type:'bg'};}
+  // Tract polygon drag (lowest priority — only if clicking inside the fill)
+  for(let ti=tracts.length-1;ti>=0;ti--){
+    const pts=tracts[ti].coords.map(p=>w2s(p.x,p.y));
+    if(pointInPoly(sx,sy,pts))return{type:'tract',tractIdx:ti};
+  }
   return null;
 }
 
@@ -631,6 +651,7 @@ function drawLegend(W,H){
 function roundRect(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.quadraticCurveTo(x+w,y,x+w,y+r);c.lineTo(x+w,y+h-r);c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);c.lineTo(x+r,y+h);c.quadraticCurveTo(x,y+h,x,y+h-r);c.lineTo(x,y+r);c.quadraticCurveTo(x,y,x+r,y);c.closePath();}
 function getBounds(pts){let a=Infinity,b=-Infinity,c=Infinity,d=-Infinity;for(const p of pts){a=Math.min(a,p.x);b=Math.max(b,p.x);c=Math.min(c,p.y);d=Math.max(d,p.y);}return{minX:a,maxX:b,minY:c,maxY:d,w:b-a,h:d-c};}
 function hexToRgb(h){return{r:parseInt(h.slice(1,3),16),g:parseInt(h.slice(3,5),16),b:parseInt(h.slice(5,7),16)};}
+function pointInPoly(x,y,pts){let inside=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const xi=pts[i].x,yi=pts[i].y,xj=pts[j].x,yj=pts[j].y;if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))inside=!inside;}return inside;}
 function fitToView(){if(!tracts.length){redraw();return;}let ap=[];for(const t of tracts)ap.push(...t.coords);if(!ap.length){redraw();return;}const b=getBounds(ap),c=$('canvasContainer'),W=c.clientWidth||800,H=c.clientHeight||600;cam.zoom=Math.min(W*.7/(b.w||1),H*.7/(b.h||1));cam.x=(b.minX+b.maxX)/2;cam.y=(b.minY+b.maxY)/2;redraw();}
 
 function exportPNG(transparent){
@@ -669,6 +690,7 @@ function setupInteraction(){
       else if(hit.type==='tpid'){const p=getPidPos(tracts[hit.tractIdx]);dragOffset={x:sx-p.x,y:sy-p.y};}
       else if(hit.type==='bg'){const s=w2s(bgS.wx,bgS.wy);dragOffset={x:sx-s.x,y:sy-s.y};}
       else if(hit.type==='legend'){const lp=getLegendPos($('canvasContainer').clientWidth,$('canvasContainer').clientHeight);dragOffset={x:sx-lp.x,y:sy-lp.y};}
+      else if(hit.type==='tract'){const wc=s2w(sx,sy);dragOffset={x:wc.x-tracts[hit.tractIdx].pobX,y:wc.y-tracts[hit.tractIdx].pobY};selectTract(hit.tractIdx);}
       container.style.cursor='move';e.preventDefault();return;
     }
     isDragging=true;dragStart={x:e.clientX,y:e.clientY};container.style.cursor='grabbing';
@@ -688,6 +710,12 @@ function setupInteraction(){
         else if(dragTarget.type==='tname'){tracts[dragTarget.tractIdx].nameOffset={wx:wc.x,wy:wc.y};}
         else if(dragTarget.type==='tpid'){tracts[dragTarget.tractIdx].pidOffset={wx:wc.x,wy:wc.y};}
         else if(dragTarget.type==='bg'){bgS.wx=wc.x;bgS.wy=wc.y;}
+        else if(dragTarget.type==='tract'){
+          const t=tracts[dragTarget.tractIdx];
+          t.pobX=wc.x-dragOffset.x;t.pobY=wc.y-dragOffset.y;
+          t.coords=callsToCoords(t.calls,t.pobX,t.pobY);
+          if(dragTarget.tractIdx===activeTractIdx){$('propPobX').value=t.pobX.toFixed(2);$('propPobY').value=t.pobY.toFixed(2);}
+        }
       }
       redraw();return;
     }
