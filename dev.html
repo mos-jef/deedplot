@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DeedPlot — Metes &amp; Bounds Parcel Plotter (DEV)</title>
+    <link rel="stylesheet" href="src/css/deedplot.css" />
+  </head>
+  <body>
+    <div id="dev-body-loader"></div>
+    <div class="toast" id="toast"></div>
+
+    <!--
+      DEV MODE: Loads body.html via fetch, then loads JS modules in order.
+      For production, run ./build.sh to produce a single index.html.
+    -->
+    <script>
+      // Load HTML body dynamically, then load JS modules in order
+      (async function () {
+        const resp = await fetch("src/body.html");
+        const html = await resp.text();
+
+        // body.html contains <body> content starting from the app div
+        // Insert it before the toast div
+        const loader = document.getElementById("dev-body-loader");
+        loader.outerHTML = html;
+
+        // JS load order matters
+        const scripts = [
+          "src/js/state.js",
+          "src/js/helpers.js",
+          "src/js/math.js",
+          "src/js/tracts.js",
+          "src/js/bgimage.js",
+          "src/js/canvas.js",
+          "src/js/drawing.js",
+          "src/js/shapes.js",
+          "src/js/smartplot.js",
+          "src/js/mabf-export.js",
+          "src/js/mabf-import.js",
+          "src/js/interaction.js",
+          "src/js/settings.js",
+        ];
+
+        for (const src of scripts) {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement("script");
+            s.src = src;
+            s.onload = resolve;
+            s.onerror = () => reject(new Error(`Failed to load ${src}`));
+            document.body.appendChild(s);
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>

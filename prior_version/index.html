@@ -221,14 +221,14 @@
         border-color: var(--dp-btn-primary);
       }
       .bt-ai {
-        background: #ecbd65;
-        color: #1a1a0a;
-        border-color: #b1782d;
+        background: #1d6e30;
+        color: var(--dp-accent2);
+        border-color: #2a8c3a;
       }
       .bt-x {
         background: var(--dp-field);
-        color: #e95a08;
-        border-color: #b1782d;
+        color: var(--dp-text2);
+        border-color: var(--dp-border-lt);
       }
       .bt:hover {
         filter: brightness(1.1);
@@ -378,6 +378,64 @@
         border-top: 1px solid var(--dp-border-lt);
       }
 
+      /* Annotation items */
+      .anno-item {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        background: var(--dp-field);
+        border: 1px solid var(--dp-border-lt);
+        border-radius: 3px;
+        padding: 4px;
+        margin-bottom: 4px;
+        font-size: 10px;
+      }
+      .anno-item-header {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        width: 100%;
+      }
+      .anno-item input[type="text"] {
+        flex: 1;
+        background: var(--dp-field);
+        border: 1px solid var(--dp-border-lt);
+        color: var(--dp-text);
+        font-family: "SF Mono", Menlo, monospace;
+        font-size: 10px;
+        outline: none;
+        min-width: 0;
+        padding: 4px 6px;
+        border-radius: 3px;
+      }
+      .anno-item input[type="text"]:focus {
+        border-color: var(--dp-icon);
+        background: var(--dp-bg3);
+      }
+      .anno-item-controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+      }
+      .anno-item-delete {
+        background: transparent;
+        border: 1px solid var(--dp-danger);
+        color: var(--dp-danger);
+        cursor: pointer;
+        font-size: 11px;
+        padding: 2px 6px;
+        line-height: 1;
+        border-radius: 3px;
+        flex-shrink: 0;
+        min-width: 24px;
+        text-align: center;
+      }
+      .anno-item-delete:hover {
+        color: #ff6666;
+        background: rgba(239, 68, 68, 0.1);
+        border-color: #ff6666;
+      }
+
       /* Floating toolbar */
       .ftb {
         position: absolute;
@@ -498,7 +556,7 @@
         line-height: 1.4;
       }
 
-      /* Popovers */
+      /* Popover for annotations/bg */
       .popover {
         position: fixed;
         background: var(--dp-bg);
@@ -846,39 +904,6 @@
               Remember
             </label>
           </div>
-          <div class="sec-label">Call Points</div>
-          <div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:2px;align-items:center">
-            <label class="ck"
-              ><input
-                type="checkbox"
-                id="cpShow"
-                checked
-                onchange="callPointStyle.show=this.checked;redraw()"
-              />Show</label
-            >
-            <div class="ir" style="margin:0;flex:1;min-width:80px">
-              <label>Size</label>
-              <input
-                type="range"
-                id="cpRadius"
-                min="0"
-                max="10"
-                value="4"
-                step="1"
-                oninput="callPointStyle.radius=+this.value;$('cpRadiusV').textContent=this.value;redraw()"
-              />
-              <span id="cpRadiusV" style="font-size:8px;color:var(--dp-text3);min-width:12px">4</span>
-            </div>
-            <div class="ir" style="margin:0">
-              <label>Color</label>
-              <input
-                type="color"
-                id="cpColor"
-                value="#ffffff"
-                oninput="callPointStyle.color=this.value;redraw()"
-              />
-            </div>
-          </div>
           <div class="sec-label">Legend style</div>
           <div class="ir">
             <label>BG</label>
@@ -925,6 +950,13 @@
             ⛶
           </button>
           <div class="ftb-sep"></div>
+          <button
+            class="ftb-b"
+            onclick="addAnnotation()"
+            title="Add text annotation"
+          >
+            T
+          </button>
           <button
             class="ftb-b"
             onclick="toggleDrawMode('rect')"
@@ -986,9 +1018,8 @@
           </select>
           <button
             class="ftb-b"
-            onclick="toggleBgImageUI()"
+            onclick="document.getElementById('bgInput').click()"
             title="Background image"
-            id="bgImgBtn"
           >
             <svg
               width="12"
@@ -1065,6 +1096,21 @@
           </div>
         </div>
 
+        <!-- Annotation popover with full controls -->
+        <div class="popover" id="annoPopover">
+          <div class="sec-t">Text annotations <span class="sec-plus" onclick="$('annoPopover').classList.remove('show')" title="Close" style="cursor:pointer;font-size:14px;font-weight:700">&times;</span></div>
+          <div
+            id="annoList"
+            style="max-height: 200px; overflow-y: auto; margin-bottom: 4px"
+          ></div>
+          <button
+            class="btn sm"
+            onclick="addAnnotation()"
+            style="margin-top: 3px; width: 100%"
+          >
+            + Add Text
+          </button>
+        </div>
 
         <!-- BG Image popover -->
         <div class="popover" id="bgPopover">
@@ -1151,15 +1197,8 @@
             Show</label
           >
           <button
-            class="btn sm"
-            onclick="$('bgInput').click(); $('bgPopover').classList.remove('show')"
-            style="margin-top: 3px; width: 100%"
-          >
-            Change Image
-          </button>
-          <button
             class="btn sm danger"
-            onclick="clearBgImage(); $('bgPopover').classList.remove('show')"
+            onclick="clearBgImage()"
             style="margin-top: 3px; width: 100%"
           >
             Remove
@@ -1626,10 +1665,8 @@
     <div class="toast" id="toast"></div>
 
     <script>
-
-      // ── state ──
       const $ = (id) => document.getElementById(id);
-      
+
       // ═══════════════ STATE ═══════════════
       let tracts = [],
         activeTractIdx = -1;
@@ -1639,6 +1676,7 @@
       let canvas, ctx;
       let dragTarget = null,
         dragOffset = { x: 0, y: 0 };
+      let annotations = [];
       let bgS = {
         img: null,
         show: true,
@@ -1654,11 +1692,6 @@
         bgColor: "#ffffff",
         dropShadow: true,
       };
-      let callPointStyle = {
-        show: true,
-        radius: 4,
-        color: "#ffffff",
-      };
       let currentDrawMode = null; // 'rect', 'circle', 'line', 'arrow', 'dashedLine', or null
       let drawStart = null; // { x, y } for shape drawing
       let dropShadow = {
@@ -1668,7 +1701,7 @@
         color: "#000000",
         alpha: 0.3,
       };
-      
+
       // Undo
       let undoStack = [],
         MAX_UNDO = 50;
@@ -1679,6 +1712,7 @@
               typeof v === "function" ? undefined : v,
             ),
           ),
+          annotations: JSON.parse(JSON.stringify(annotations)),
           activeTractIdx,
           legendPos: { ...legendPos },
         };
@@ -1691,6 +1725,7 @@
           return;
         }
         const s = undoStack.pop();
+        annotations = s.annotations;
         activeTractIdx = s.activeTractIdx;
         legendPos = s.legendPos;
         tracts = s.tracts.map((t) => {
@@ -1704,122 +1739,11 @@
         updateTractList();
         updateProps();
         updateCallSchedule();
+        updateAnnoList();
         redraw();
         showToast("Undo");
       }
 
-
-      // ── helpers ──
-      // ═══════════════ HELPERS ═══════════════
-      function roundRect(c, x, y, w, h, r) {
-        c.beginPath();
-        c.moveTo(x + r, y);
-        c.lineTo(x + w - r, y);
-        c.quadraticCurveTo(x + w, y, x + w, y + r);
-        c.lineTo(x + w, y + h - r);
-        c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-        c.lineTo(x + r, y + h);
-        c.quadraticCurveTo(x, y + h, x, y + h - r);
-        c.lineTo(x, y + r);
-        c.quadraticCurveTo(x, y, x + r, y);
-        c.closePath();
-      }
-      function getBounds(pts) {
-        let a = Infinity,
-          b = -Infinity,
-          c = Infinity,
-          d = -Infinity;
-        for (const p of pts) {
-          a = Math.min(a, p.x);
-          b = Math.max(b, p.x);
-          c = Math.min(c, p.y);
-          d = Math.max(d, p.y);
-        }
-        return { minX: a, maxX: b, minY: c, maxY: d, w: b - a, h: d - c };
-      }
-      function hexToRgb(h) {
-        return {
-          r: parseInt(h.slice(1, 3), 16),
-          g: parseInt(h.slice(3, 5), 16),
-          b: parseInt(h.slice(5, 7), 16),
-        };
-      }
-      function pointInPoly(x, y, pts) {
-        let inside = false;
-        for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
-          const xi = pts[i].x,
-            yi = pts[i].y,
-            xj = pts[j].x,
-            yj = pts[j].y;
-          if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi)
-            inside = !inside;
-        }
-        return inside;
-      }
-      function fitToView() {
-        if (!tracts.length) {
-          redraw();
-          return;
-        }
-        let ap = [];
-        for (const t of tracts) ap.push(...t.coords);
-        if (!ap.length) {
-          redraw();
-          return;
-        }
-        const b = getBounds(ap),
-          c = $("canvasContainer"),
-          W = c.clientWidth || 800,
-          H = c.clientHeight || 600;
-        cam.zoom = Math.min((W * 0.7) / (b.w || 1), (H * 0.7) / (b.h || 1));
-        cam.x = (b.minX + b.maxX) / 2;
-        cam.y = (b.minY + b.maxY) / 2;
-        redraw();
-      }
-      
-      function exportPNG(transparent) {
-        if (transparent) {
-          // Re-render without bg/grid, capture transparent
-          const c = $("canvasContainer"),
-            W = c.clientWidth,
-            H = c.clientHeight;
-          const tmpCanvas = document.createElement("canvas");
-          const dpr = window.devicePixelRatio || 1;
-          tmpCanvas.width = W * dpr;
-          tmpCanvas.height = H * dpr;
-          const origCtx = ctx;
-          const origCanvas = canvas;
-          ctx = tmpCanvas.getContext("2d");
-          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-          canvas = tmpCanvas;
-          redraw(true);
-          const link = document.createElement("a");
-          link.download = "parcel_map_transparent.png";
-          link.href = tmpCanvas.toDataURL("image/png");
-          link.click();
-          ctx = origCtx;
-          canvas = origCanvas;
-          redraw();
-          showToast("Transparent PNG exported!");
-        } else {
-          const link = document.createElement("a");
-          link.download = "parcel_map.png";
-          link.href = canvas.toDataURL("image/png");
-          link.click();
-          showToast("PNG exported!");
-        }
-      }
-      
-      function showToast(m) {
-        const t = $("toast");
-        t.textContent = m;
-        t.classList.add("show");
-        setTimeout(() => t.classList.remove("show"), 2000);
-      }
-      
-
-
-      // ── math ──
       // ═══════════════ MATH ═══════════════
       function makeToRad(q, d, m, s, dir) {
         return function () {
@@ -1831,7 +1755,7 @@
           return 0;
         };
       }
-      
+
       function parseDistance(text) {
         // Match distance with units — supports all common survey measurements
         // Handles fractions like "6.48 1/2"
@@ -1853,7 +1777,7 @@
         else if (unit.startsWith("yard") || unit === "yd") val *= 3;
         return val;
       }
-      
+
       function parseBearing(text) {
         let t = text
           .replace(/North/gi, "N")
@@ -1864,14 +1788,14 @@
           .replace(/[""″]/g, '"')
           .replace(/[°˚]/g, "°")
           .replace(/Due\s+/gi, "");
-      
+
         let quad,
           deg,
           min = 0,
           sec = 0,
           dir,
           afterBearing;
-      
+
         // Pattern 1: Full DMS — N 89°56'00" E or S 04°59'30" W
         let m = t.match(
           /([NS])\s*(\d+)[°]\s*(\d+)[':]\s*([\d.]+)["']?\s*([EW])/,
@@ -1884,7 +1808,7 @@
           dir = m[5];
           afterBearing = t.slice(t.indexOf(m[0]) + m[0].length);
         }
-      
+
         // Pattern 2: Degrees + minutes, no seconds — N 0° 19' E
         if (!m) {
           m = t.match(/([NS])\s*(\d+)[°]\s*(\d+)[':]\s*([EW])/);
@@ -1897,7 +1821,7 @@
             afterBearing = t.slice(t.indexOf(m[0]) + m[0].length);
           }
         }
-      
+
         // Pattern 3: Degrees only — S 28° W or South 28° West
         if (!m) {
           m = t.match(/([NS])\s*(\d+)[°]\s*([EW])/);
@@ -1910,7 +1834,7 @@
             afterBearing = t.slice(t.indexOf(m[0]) + m[0].length);
           }
         }
-      
+
         // Pattern 4: Cardinal only — "North" "East" "South" "West" (no angle)
         if (!m) {
           m = t.match(/^\s*([NSEW])\s+([\d,]+)/);
@@ -1938,7 +1862,7 @@
             afterBearing = t.slice(t.indexOf(m[0]) + m[1].length);
           }
         }
-      
+
         // Pattern 5: "with the same" or "with said road" + cardinal — contextual direction
         // e.g. "with the same West 10.32 chains"
         if (!m) {
@@ -1969,12 +1893,12 @@
             afterBearing = t.slice(t.indexOf(m[0]) + m[1].length);
           }
         }
-      
+
         if (!afterBearing && afterBearing !== "") return null;
-      
+
         const dist = parseDistance(afterBearing);
         if (!dist || isNaN(dist)) return null;
-      
+
         return {
           quad,
           deg,
@@ -1988,7 +1912,7 @@
           toRad: makeToRad(quad, deg, min, sec, dir),
         };
       }
-      
+
       function parseDescription(text) {
         const flat = text.replace(/\n/g, " ").replace(/\s+/g, " ");
         const segments = flat.split(/[Tt]hence\s+/);
@@ -2005,7 +1929,7 @@
         }
         return calls;
       }
-      
+
       function parseCurveCall(text) {
         let t = text
           .replace(/North/gi, "N")
@@ -2015,14 +1939,14 @@
           .replace(/[''′]/g, "'")
           .replace(/[""″]/g, '"')
           .replace(/[°˚]/g, "°");
-      
+
         // Must have "curve" keyword
         if (!/curv/i.test(t)) return null;
-      
+
         // Direction: right or left
         let curveDir = "R";
         if (/(?:to\s+the\s+)?left/i.test(t)) curveDir = "L";
-      
+
         // Radius — multiple patterns: "radius of 629.50 feet", "radius=100", "R=552.00 feet", "R 552.00"
         let radius = null;
         let rm = t.match(
@@ -2030,7 +1954,7 @@
         );
         if (rm) radius = parseFloat(rm[1].replace(/,/g, ""));
         if (!radius) return null;
-      
+
         // Delta / central angle — "central angle of 03°58'47"", "Δ=89°36'27"", "delta=45°"
         let delta = null;
         let dm = t.match(
@@ -2047,7 +1971,7 @@
           );
           if (dm) delta = parseFloat(dm[1]);
         }
-      
+
         // Chord bearing — multiple patterns:
         // "chord bearing of S 41°32'38" E"
         // "chord=777.97 feet bearing S 41°32'38" E"
@@ -2072,7 +1996,7 @@
             dir: cbm[5],
           };
         }
-      
+
         // Chord length — "chord=777.97 feet", "chord distance of 43.72 feet", "chord of X feet"
         let chordLen = null;
         let clm = t.match(
@@ -2085,14 +2009,14 @@
           );
           if (clm) chordLen = parseFloat(clm[1].replace(/,/g, ""));
         }
-      
+
         // Arc length (optional) — "863.30 feet" before the parentheses, or "arc length of X"
         let arcLen = null;
         let alm = t.match(
           /arc\s*(?:length|distance)?\s*(?:of\s*|=\s*)?(\d[\d,]*(?:\.\d+)?)\s*(?:feet|foot|ft|')?/i,
         );
         if (alm) arcLen = parseFloat(alm[1].replace(/,/g, ""));
-      
+
         // If we have chord bearing + chord length, we can plot
         if (!chordBearing) return null;
         if (!chordLen) {
@@ -2105,14 +2029,14 @@
             (2 * Math.asin(Math.min(1, chordLen / (2 * radius))) * 180) /
             Math.PI;
         }
-      
+
         const q = chordBearing.quad,
           d = chordBearing.deg,
           mi = chordBearing.min,
           s = chordBearing.sec,
           dir = chordBearing.dir;
         const bearingStr = `${q} ${String(d).padStart(2, "0")}°${String(mi).padStart(2, "0")}'${s.toFixed(2).padStart(5, "0")}" ${dir}`;
-      
+
         return {
           quad: q,
           deg: d,
@@ -2131,7 +2055,7 @@
           toRad: makeToRad(q, d, mi, s, dir),
         };
       }
-      
+
       function callsToCoords(calls, sx = 0, sy = 0) {
         const pts = [{ x: sx, y: sy }];
         let x = sx,
@@ -2147,45 +2071,45 @@
             const R = c.radius;
             const deltaRad = (c.delta * Math.PI) / 180;
             const arcDir = c.curveDir || "R";
-      
+
             // Endpoint of chord
             const endX = x + chordDist * Math.cos(chordBearing);
             const endY = y + chordDist * Math.sin(chordBearing);
-      
+
             // Midpoint of chord
             const midX = (x + endX) / 2;
             const midY = (y + endY) / 2;
-      
+
             // Distance from chord midpoint to circle center
             // Using: d = sqrt(R^2 - (chord/2)^2)
             const halfChord = chordDist / 2;
             const d = Math.sqrt(Math.max(0, R * R - halfChord * halfChord));
-      
+
             // Perpendicular to chord direction
             // Chord angle in screen coords
             const chordAngle = Math.atan2(endY - y, endX - x);
-      
+
             // For curve RIGHT: center is to the right of travel direction (perpendicular CW)
             // For curve LEFT: center is to the left of travel direction (perpendicular CCW)
             const perpAngle =
               arcDir === "R"
                 ? chordAngle - Math.PI / 2
                 : chordAngle + Math.PI / 2;
-      
+
             // Circle center
             const cx2 = midX + d * Math.cos(perpAngle);
             const cy2 = midY + d * Math.sin(perpAngle);
-      
+
             // Start angle (from center to start point)
             const startAngle = Math.atan2(y - cy2, x - cx2);
-      
+
             // For curve RIGHT, we sweep clockwise (negative in standard math coords)
             // For curve LEFT, we sweep counter-clockwise (positive)
             // But our coordinate system has Y-up, so:
             // RIGHT = clockwise when looking at map = negative angle change
             // LEFT = counter-clockwise when looking at map = positive angle change
             const sweepSign = arcDir === "R" ? -1 : 1;
-      
+
             const numSegs = Math.max(
               12,
               Math.round((Math.abs(deltaRad) * R) / 15),
@@ -2236,10 +2160,7 @@
           e = pts[pts.length - 1];
         return Math.sqrt((e.x - s.x) ** 2 + (e.y - s.y) ** 2);
       }
-      
 
-
-      // ── tracts ──
       // ═══════════════ TRACTS ═══════════════
       const defColors = [
         "#CDDC39",
@@ -2296,7 +2217,7 @@
           legendTextColor: "#000000", // NEW: color for this tract in legend
         };
       }
-      
+
       function parseDeed() {
         const text = $("deedInput").value.trim();
         if (!text) {
@@ -2304,7 +2225,7 @@
           return;
         }
         saveUndo();
-      
+
         // Split into segments by "Tract I:", "Tract II:", "EXCEPTING", "PARCEL 1:", etc.
         const segments = [];
         const splitRe =
@@ -2319,7 +2240,7 @@
             label: match[0].trim().replace(/[:\.]$/, ""),
           });
         }
-      
+
         if (markers.length > 0) {
           // Text before first marker might have calls too
           if (markers[0].idx > 50) {
@@ -2356,12 +2277,12 @@
               segments.push({ name: "Tract 1", calls, isExc: false });
           }
         }
-      
+
         if (!segments.length) {
           showToast("No calls found. Check format.");
           return;
         }
-      
+
         for (const seg of segments) {
           const t = createTract(seg.calls, seg.name);
           if (seg.isExc) {
@@ -2371,21 +2292,23 @@
           }
           tracts.push(t);
         }
-      
+
         updateTractList();
         if (tracts.length > 0) selectTract(tracts.length - 1);
         fitToView();
         setTimeout(fitToView, 100);
         showToast(`Plotted ${segments.length} tract(s)`);
       }
-      
+
       function clearTracts() {
         saveUndo();
         tracts = [];
         activeTractIdx = -1;
+        annotations = [];
         legendPos = { sx: null, sy: null };
         updateTractList();
         updateCallSchedule();
+        updateAnnoList();
         $("deedInput").value = "";
         switchRightPanel();
         redraw();
@@ -2399,7 +2322,7 @@
         switchRightPanel();
         redraw();
       }
-      
+
       function syncLegalBox() {
         if (activeTractIdx < 0) return;
         const t = tracts[activeTractIdx];
@@ -2414,7 +2337,7 @@
         });
         $("deedInput").value = lines.join("\n");
       }
-      
+
       function updateProp(key, val) {
         if (activeTractIdx < 0) return;
         saveUndo();
@@ -2426,7 +2349,7 @@
         updateTractList();
         redraw();
       }
-      
+
       function updatePOB() {
         if (activeTractIdx < 0) return;
         saveUndo();
@@ -2437,7 +2360,7 @@
         updateTractList();
         redraw();
       }
-      
+
       function updateTractRotation(deg) {
         if (activeTractIdx < 0) return;
         saveUndo();
@@ -2449,7 +2372,7 @@
         updateTractList();
         redraw();
       }
-      
+
       function recomputeRotatedCoords(t) {
         // Compute base coords from calls + POB
         const base = callsToCoords(t.calls, t.pobX, t.pobY);
@@ -2479,7 +2402,7 @@
           };
         });
       }
-      
+
       function updateProps() {
         if (activeTractIdx < 0) return;
         const t = tracts[activeTractIdx];
@@ -2522,13 +2445,13 @@
         $("propNumberCalls").checked = t.numberCalls;
         $("propHatch").checked = t.hatching;
         $("propLegendTextColor").value = t.legendTextColor || "#000000";
-      
+
         // Update drop shadow popover if visible
         if ($("dropShadowPopover").classList.contains("show")) {
           updateDropShadowValues();
         }
       }
-      
+
       function updateTractList() {
         const el = $("tractList");
         if (!tracts.length) {
@@ -2552,7 +2475,7 @@
           .join("");
         $("statusTracts").textContent = `Tracts: ${tracts.length}`;
       }
-      
+
       function moveLayer(idx, dir) {
         const newIdx = idx + dir;
         if (newIdx < 0 || newIdx >= tracts.length) return;
@@ -2563,7 +2486,7 @@
         updateTractList();
         redraw();
       }
-      
+
       function updateCallSchedule() {
         const el = $("callSchedule");
         if (activeTractIdx < 0) {
@@ -2585,11 +2508,145 @@
         h += `<div style="margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-secondary);line-height:1.7">Area: ${area.toFixed(4)} ac (${(area * 43560).toFixed(0)} sf)<br>Perim: ${perim.toFixed(2)}'<br>Closure: ${ce.toFixed(4)}' (${ratio})</div>`;
         el.innerHTML = h;
       }
-      
-      
 
+      // ═══════════════ ANNOTATIONS ═══════════════
+      function addAnnotation() {
+        saveUndo();
+        annotations.push({
+          text: "Label",
+          wx: cam.x,
+          wy: cam.y,
+          color: "#ffffff",
+          bgColor: "#0f1117",
+          bgAlpha: 0.8,
+          showBg: true,
+          fontSize: 14,
+          rotation: 0,
+        });
+        updateAnnoList();
+        // OPEN THE POPOVER SO USER SEES THE ANNOTATION AND DELETE BUTTON
+        const pop = $("annoPopover");
+        if (pop) {
+          pop.classList.add("show");
+          // Position popover near center
+          pop.style.left = window.innerWidth / 2 - 100 + "px";
+          pop.style.top = "100px";
+          // Close on outside click
+          setTimeout(() => {
+            const closer = (e) => {
+              if (!pop.contains(e.target)) {
+                pop.classList.remove("show");
+                document.removeEventListener("click", closer);
+              }
+            };
+            document.addEventListener("click", closer);
+          }, 0);
+        }
+        redraw();
+      }
 
-      // ── bgimage ──
+      function updateAnnoList() {
+        const el = $("annoList");
+        if (!annotations.length) {
+          el.innerHTML = "";
+          return;
+        }
+
+        // First, clone to remove old listeners
+        const newEl = el.cloneNode(false);
+        el.parentNode.replaceChild(newEl, el);
+        const newList = $("annoList"); // Get the fresh element
+
+        // NOW set the HTML content on the fresh element
+        newList.innerHTML = annotations
+          .map(
+            (a, i) =>
+              `<div class="anno-item" data-anno-index="${i}">
+                <div class="anno-item-header" style="display:flex;align-items:flex-start;gap:3px">
+                  <textarea class="anno-text-input" placeholder="Enter text" data-anno-index="${i}" style="flex:1;height:50px;padding:4px;border:1px solid var(--dp-border-lt);border-radius:3px;font-family:monospace;font-size:11px;resize:vertical;background:var(--dp-field);color:var(--dp-text)">${a.text}</textarea>
+                  <button class="anno-delete-btn btn sm danger" data-anno-index="${i}" style="flex-shrink:0;padding:2px 6px;font-size:9px" title="Delete annotation">&times;</button>
+                </div>
+                <div class="anno-item-controls">
+                  <div class="ir" style="margin: 0">
+                    <label style="font-size: 9px">Text</label>
+                    <input type="color" class="anno-color-input" value="${a.color}" style="width:100%;height:20px;border:1px solid var(--dp-border-lt);padding:0" data-anno-index="${i}">
+                  </div>
+                  <div class="ir" style="margin: 0">
+                    <label style="font-size: 9px">Size</label>
+                    <input type="number" class="anno-size-input" value="${a.fontSize}" min="8" max="36" style="width:100%;font-size:9px" data-anno-index="${i}">
+                  </div>
+                  <div class="ir" style="margin: 0">
+                    <label style="font-size: 9px">BG</label>
+                    <input type="color" class="anno-bg-input" value="${a.bgColor}" style="width:100%;height:20px;border:1px solid var(--dp-border-lt);padding:0" data-anno-index="${i}">
+                  </div>
+                  <div class="ir" style="margin: 0">
+                    <label style="font-size: 9px">BG Op</label>
+                    <input type="range" class="anno-bgalpha-input" min="0" max="100" value="${Math.round((a.bgAlpha || 0.8) * 100)}" style="width:100%" data-anno-index="${i}">
+                  </div>
+                </div>
+                <label class="ck" style="margin-top: 2px; font-size: 9px">
+                  <input type="checkbox" class="anno-showbg-input" ${a.showBg ? "checked" : ""} style="width:10px;height:10px" data-anno-index="${i}">
+                  Show BG
+                </label>
+              </div>`,
+          )
+          .join("");
+
+        // Attach event listeners to fresh element
+        newList.addEventListener("change", (e) => {
+          const idx = parseInt(e.target.dataset.annoIndex);
+          if (isNaN(idx)) return;
+
+          if (e.target.classList.contains("anno-color-input")) {
+            annotations[idx].color = e.target.value;
+          } else if (e.target.classList.contains("anno-bg-input")) {
+            annotations[idx].bgColor = e.target.value;
+          } else if (e.target.classList.contains("anno-showbg-input")) {
+            annotations[idx].showBg = e.target.checked;
+          }
+          redraw();
+        });
+
+        newList.addEventListener("input", (e) => {
+          const idx = parseInt(e.target.dataset.annoIndex);
+          if (isNaN(idx)) return;
+
+          if (e.target.classList.contains("anno-text-input")) {
+            annotations[idx].text = e.target.value;
+          } else if (e.target.classList.contains("anno-size-input")) {
+            annotations[idx].fontSize = parseInt(e.target.value) || 12;
+          } else if (e.target.classList.contains("anno-bgalpha-input")) {
+            annotations[idx].bgAlpha = e.target.value / 100;
+          }
+          redraw();
+        });
+
+        // Handle Ctrl+Enter to finish editing
+        newList.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+            const annoItem = e.target.closest(".anno-item");
+            if (annoItem) {
+              e.preventDefault();
+              e.target.blur();
+              redraw();
+            }
+          }
+        });
+
+        // Delete button click handler
+        newList.addEventListener("click", (e) => {
+          if (e.target.classList.contains("anno-delete-btn")) {
+            const idx = parseInt(e.target.dataset.annoIndex);
+            if (isNaN(idx)) return;
+            e.stopPropagation();
+            saveUndo();
+            annotations.splice(idx, 1);
+            updateAnnoList();
+            redraw();
+          }
+        });
+      }
+
       // ═══════════════ BG IMAGE ═══════════════
       function loadBgImage(input) {
         const f = input.files[0];
@@ -2615,42 +2672,7 @@
         $("bgInput").value = "";
         redraw();
       }
-      function toggleBgImageUI() {
-        if (bgS.img) {
-          const pop = $("bgPopover");
-          pop.classList.toggle("show");
-          if (pop.classList.contains("show")) {
-            const btn = $("bgImgBtn");
-            const r = btn.getBoundingClientRect();
-            pop.style.left = Math.max(10, r.left - 60) + "px";
-            pop.style.bottom = (window.innerHeight - r.top + 8) + "px";
-            pop.style.top = "auto";
-            $("bgAlpha").value = Math.round(bgS.alpha * 100);
-            $("bgScale").value = Math.round(bgS.scale * 100);
-            $("bgScaleV").textContent = Math.round(bgS.scale * 100) + "%";
-            $("bgRot").value = bgS.rotation;
-            $("bgRotV").textContent = bgS.rotation + "°";
-            $("bgRotFine").value = Math.round((bgS.rotFine || 0) * 10);
-            $("bgRotFineV").textContent = (bgS.rotFine || 0).toFixed(1) + "°";
-            $("bgShow").checked = bgS.show;
-            setTimeout(() => {
-              const closer = (e) => {
-                if (!pop.contains(e.target) && e.target.id !== "bgImgBtn" && !e.target.closest("#bgImgBtn")) {
-                  pop.classList.remove("show");
-                  document.removeEventListener("click", closer);
-                }
-              };
-              document.addEventListener("click", closer);
-            }, 0);
-          }
-        } else {
-          $("bgInput").click();
-        }
-      }
-      
 
-
-      // ── canvas ──
       // ═══════════════ CANVAS ═══════════════
       function initCanvas() {
         canvas = $("mapCanvas");
@@ -2684,7 +2706,7 @@
           y: cam.y - (sy - c.clientHeight / 2) / cam.zoom,
         };
       }
-      
+
       // ═══════════════ HIT TEST ═══════════════
       function getLabelPos(tract, ci) {
         const pts = tract.coords,
@@ -2771,7 +2793,7 @@
         const dim = getLegendDims();
         return { x: 20, y: H - dim.h - 20 }; // Leaves 20px padding from bottom
       }
-      
+
       // ═══════════════ SHAPE DRAWING & NEW FEATURES ═══════════════
       function toggleDrawMode(mode) {
         if (currentDrawMode === mode) {
@@ -2783,7 +2805,7 @@
         updateDrawModeButtons();
         showToast(`Draw mode: ${mode}`);
       }
-      
+
       function updateDrawModeButtons() {
         const buttons = {
           rect: "drawRectBtn",
@@ -2803,12 +2825,12 @@
           }
         }
       }
-      
+
       function updateLegendStyle() {
         legendStyle.bgColor = $("legendBgColor").value;
         legendStyle.dropShadow = $("legendDropShadow").checked;
       }
-      
+
       function toggleDropShadowPopover() {
         const pop = $("dropShadowPopover");
         if (!pop) return;
@@ -2843,7 +2865,7 @@
           }
         }
       }
-      
+
       function updateDropShadowValues() {
         const t = tracts[activeTractIdx];
         if (!t || !t.dropShadow) return;
@@ -2853,7 +2875,7 @@
         $("shadowColor").value = t.dropShadow.color;
         $("shadowAlpha").value = Math.round(t.dropShadow.alpha * 100);
       }
-      
+
       function updateDropShadow() {
         const t = tracts[activeTractIdx];
         if (!t) return;
@@ -2865,7 +2887,7 @@
         t.dropShadow.color = $("shadowColor").value;
         t.dropShadow.alpha = (parseInt($("shadowAlpha").value) || 0) / 100;
       }
-      
+
       function removeDropShadow() {
         const t = tracts[activeTractIdx];
         if (!t) return;
@@ -2875,7 +2897,7 @@
         redraw();
         showToast("Drop shadow removed");
       }
-      
+
       function hitTest(sx, sy) {
         // Legend
         if ($("mapShowLegend").checked && tracts.length) {
@@ -2889,6 +2911,11 @@
             sy <= lp.y
           )
             return { type: "legend" };
+        }
+        for (let i = annotations.length - 1; i >= 0; i--) {
+          const s = w2s(annotations[i].wx, annotations[i].wy);
+          if (Math.abs(sx - s.x) < 60 && Math.abs(sy - s.y) < 20)
+            return { type: "anno", idx: i };
         }
         for (let ti = tracts.length - 1; ti >= 0; ti--) {
           const t = tracts[ti];
@@ -2959,10 +2986,7 @@
         }
         return null;
       }
-      
 
-
-      // ── drawing ──
       // ═══════════════ DRAWING ═══════════════
       function redraw(transparent) {
         if (!ctx) return;
@@ -2995,6 +3019,7 @@
         if (!transparent && $("mapShowGrid").checked) drawGrid(W, H);
         for (let i = 0; i < tracts.length; i++)
           drawTract(tracts[i], i === activeTractIdx);
+        drawAnnotations();
         drawShapes(); // ADDED THIS LINE
         const mc = $("mapTextColor").value;
         if ($("mapShowNorth").checked) drawNorthArrow(W, H, mc);
@@ -3003,7 +3028,7 @@
         drawTitle(W, mc);
         $("statusZoom").textContent = `Zoom: ${Math.round(cam.zoom * 100)}%`;
       }
-      
+
       function drawGrid(W, H) {
         let sp = 100;
         while (sp * cam.zoom < 40) sp *= 2;
@@ -3035,7 +3060,7 @@
           ctx.stroke();
         }
       }
-      
+
       function drawEndpoint(x, y, shape, sz, color, angle) {
         ctx.fillStyle = color;
         ctx.strokeStyle = color;
@@ -3086,12 +3111,12 @@
           ctx.restore();
         }
       }
-      
+
       function drawTract(tract, isActive) {
         const pts = tract.coords;
         if (pts.length < 2) return;
         const sp = pts.map((p) => w2s(p.x, p.y));
-      
+
         // Drop shadow if enabled
         if (
           tract.dropShadow &&
@@ -3121,7 +3146,7 @@
           ctx.shadowOffsetX = 0;
           ctx.shadowOffsetY = 0;
         }
-      
+
         // Fill
         ctx.beginPath();
         sp.forEach((p, i) =>
@@ -3255,27 +3280,25 @@
         }
         // Corner markers
         // Corner markers — only at call start/end points, not arc intermediates
-        if (callPointStyle.show && callPointStyle.radius > 0) {
-          const endpointIndices = new Set([0]);
-          for (const c of tract.calls) {
-            if (c._ptRange) endpointIndices.add(c._ptRange.end);
-            else endpointIndices.add(endpointIndices.size);
-          }
-          // Fallback: if no _ptRange data, draw at original point indices
-          if (!tract.calls[0] || !tract.calls[0]._ptRange) {
-            for (let i = 0; i < pts.length - 1; i++) endpointIndices.add(i);
-          }
-          for (const i of endpointIndices) {
-            if (i >= sp.length) continue;
-            ctx.beginPath();
-            ctx.arc(sp[i].x, sp[i].y, callPointStyle.radius, 0, Math.PI * 2);
-            ctx.fillStyle = callPointStyle.color;
-            ctx.fill();
-            if (tract.strokeWidth > 0) {
-              ctx.strokeStyle = tract.strokeColor;
-              ctx.lineWidth = 1.5;
-              ctx.stroke();
-            }
+        const endpointIndices = new Set([0]);
+        for (const c of tract.calls) {
+          if (c._ptRange) endpointIndices.add(c._ptRange.end);
+          else endpointIndices.add(endpointIndices.size);
+        }
+        // Fallback: if no _ptRange data, draw at original point indices
+        if (!tract.calls[0] || !tract.calls[0]._ptRange) {
+          for (let i = 0; i < pts.length - 1; i++) endpointIndices.add(i);
+        }
+        for (const i of endpointIndices) {
+          if (i >= sp.length) continue;
+          ctx.beginPath();
+          ctx.arc(sp[i].x, sp[i].y, 4, 0, Math.PI * 2);
+          ctx.fillStyle = "#fff";
+          ctx.fill();
+          if (tract.strokeWidth > 0) {
+            ctx.strokeStyle = tract.strokeColor;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
           }
         }
         // Parcel ID
@@ -3319,8 +3342,30 @@
         ctx.fillText(tract.name, 0, 0);
         ctx.restore();
       }
-      
-      
+
+      function drawAnnotations() {
+        for (const a of annotations) {
+          const s = w2s(a.wx, a.wy),
+            fs = a.fontSize * Math.min(1.5, cam.zoom * 3);
+          ctx.save();
+          ctx.translate(s.x, s.y);
+          ctx.rotate(((a.rotation || 0) * Math.PI) / 180);
+          ctx.font = `600 ${fs}px 'JetBrains Mono',monospace`;
+          const tw = ctx.measureText(a.text).width;
+          if (a.showBg) {
+            const bg = hexToRgb(a.bgColor);
+            ctx.fillStyle = `rgba(${bg.r},${bg.g},${bg.b},${a.bgAlpha})`;
+            roundRect(ctx, -tw / 2 - 6, -fs / 2 - 4, tw + 12, fs + 8, 4);
+            ctx.fill();
+          }
+          ctx.fillStyle = a.color;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(a.text, 0, 0);
+          ctx.restore();
+        }
+      }
+
       // Draw persistent shapes for active tract
       function drawShapes() {
         const t = tracts[activeTractIdx];
@@ -3332,7 +3377,7 @@
           drawShape(shape.type, startScreen, endScreen, shape.color, shape.width);
         }
       }
-      
+
       function drawNorthArrow(W, H, color) {
         ctx.save();
         ctx.translate(W - 50, 80);
@@ -3352,7 +3397,7 @@
         ctx.fillText("N", 0, 10);
         ctx.restore();
       }
-      
+
       function drawScaleBar(W, H, color) {
         let bf = 100;
         for (const o of [50, 100, 200, 500, 1000, 2000, 5000])
@@ -3382,7 +3427,7 @@
         ctx.fillText(`${bf} ft`, x + bp / 2, y - 10);
         ctx.globalAlpha = 1;
       }
-      
+
       function drawTitle(W, color) {
         const title = $("mapTitle").value,
           sub = $("mapSubtitle").value;
@@ -3407,7 +3452,7 @@
           ctx.globalAlpha = 1;
         }
       }
-      
+
       // Legend box
       function getLegendDims() {
         if (!tracts.length) return { w: 0, h: 0 };
@@ -3422,13 +3467,13 @@
         } // name, separator, calls, stats
         return { w: 280, h: lines * lh + pad * 2 };
       }
-      
+
       function drawLegend(W, H) {
         const lp = getLegendPos(W, H),
           dim = getLegendDims();
         const x = lp.x,
           y = lp.y;
-      
+
         // Box with drop shadow if enabled
         ctx.save();
         if (legendStyle.dropShadow) {
@@ -3443,7 +3488,7 @@
         roundRect(ctx, x, y, dim.w, dim.h, 8);
         ctx.fill();
         ctx.stroke();
-      
+
         // Content
         ctx.textAlign = "left";
         ctx.textBaseline = "top";
@@ -3453,11 +3498,11 @@
         for (const t of tracts) {
           // Per-tract text color (defaults to black)
           const tColor = t.legendTextColor || "#000000";
-      
+
           ctx.font = "700 11px 'JetBrains Mono',monospace";
           ctx.fillStyle = tColor;
           ctx.fillText(t.name, px, cy);
-      
+
           cy += lh;
           const area = computeArea(t.coords),
             ce = closureError(t.coords),
@@ -3484,71 +3529,114 @@
         }
         ctx.restore();
       }
-      
 
-
-      // ── shapes ──
-      // ═══════════════ SHAPE DRAWING ═══════════════
-      function drawShape(shape, start, end, color = "#000000", width = 2) {
-        ctx.save();
-        ctx.strokeStyle = color;
-        ctx.lineWidth = width;
-        ctx.fillStyle = "transparent";
-      
-        if (shape === "rect") {
-          const w = end.x - start.x;
-          const h = end.y - start.y;
-          ctx.strokeRect(start.x, start.y, w, h);
-        } else if (shape === "circle") {
-          const dx = end.x - start.x;
-          const dy = end.y - start.y;
-          const r = Math.sqrt(dx * dx + dy * dy);
-          ctx.beginPath();
-          ctx.arc(start.x, start.y, r, 0, Math.PI * 2);
-          ctx.stroke();
-        } else if (shape === "line") {
-          ctx.beginPath();
-          ctx.moveTo(start.x, start.y);
-          ctx.lineTo(end.x, end.y);
-          ctx.stroke();
-        } else if (shape === "arrow") {
-          const dx = end.x - start.x;
-          const dy = end.y - start.y;
-          const angle = Math.atan2(dy, dx);
-          const headlen = 20;
-      
-          ctx.beginPath();
-          ctx.moveTo(start.x, start.y);
-          ctx.lineTo(end.x, end.y);
-          ctx.stroke();
-      
-          ctx.beginPath();
-          ctx.moveTo(end.x, end.y);
-          ctx.lineTo(
-            end.x - headlen * Math.cos(angle - Math.PI / 6),
-            end.y - headlen * Math.sin(angle - Math.PI / 6),
-          );
-          ctx.moveTo(end.x, end.y);
-          ctx.lineTo(
-            end.x - headlen * Math.cos(angle + Math.PI / 6),
-            end.y - headlen * Math.sin(angle + Math.PI / 6),
-          );
-          ctx.stroke();
-        } else if (shape === "dashedLine") {
-          ctx.setLineDash([5, 5]);
-          ctx.beginPath();
-          ctx.moveTo(start.x, start.y);
-          ctx.lineTo(end.x, end.y);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        }
-      
-        ctx.restore();
+      // ═══════════════ HELPERS ═══════════════
+      function roundRect(c, x, y, w, h, r) {
+        c.beginPath();
+        c.moveTo(x + r, y);
+        c.lineTo(x + w - r, y);
+        c.quadraticCurveTo(x + w, y, x + w, y + r);
+        c.lineTo(x + w, y + h - r);
+        c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        c.lineTo(x + r, y + h);
+        c.quadraticCurveTo(x, y + h, x, y + h - r);
+        c.lineTo(x, y + r);
+        c.quadraticCurveTo(x, y, x + r, y);
+        c.closePath();
       }
-      
+      function getBounds(pts) {
+        let a = Infinity,
+          b = -Infinity,
+          c = Infinity,
+          d = -Infinity;
+        for (const p of pts) {
+          a = Math.min(a, p.x);
+          b = Math.max(b, p.x);
+          c = Math.min(c, p.y);
+          d = Math.max(d, p.y);
+        }
+        return { minX: a, maxX: b, minY: c, maxY: d, w: b - a, h: d - c };
+      }
+      function hexToRgb(h) {
+        return {
+          r: parseInt(h.slice(1, 3), 16),
+          g: parseInt(h.slice(3, 5), 16),
+          b: parseInt(h.slice(5, 7), 16),
+        };
+      }
+      function pointInPoly(x, y, pts) {
+        let inside = false;
+        for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+          const xi = pts[i].x,
+            yi = pts[i].y,
+            xj = pts[j].x,
+            yj = pts[j].y;
+          if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi)
+            inside = !inside;
+        }
+        return inside;
+      }
+      function fitToView() {
+        if (!tracts.length) {
+          redraw();
+          return;
+        }
+        let ap = [];
+        for (const t of tracts) ap.push(...t.coords);
+        if (!ap.length) {
+          redraw();
+          return;
+        }
+        const b = getBounds(ap),
+          c = $("canvasContainer"),
+          W = c.clientWidth || 800,
+          H = c.clientHeight || 600;
+        cam.zoom = Math.min((W * 0.7) / (b.w || 1), (H * 0.7) / (b.h || 1));
+        cam.x = (b.minX + b.maxX) / 2;
+        cam.y = (b.minY + b.maxY) / 2;
+        redraw();
+      }
 
+      function exportPNG(transparent) {
+        if (transparent) {
+          // Re-render without bg/grid, capture transparent
+          const c = $("canvasContainer"),
+            W = c.clientWidth,
+            H = c.clientHeight;
+          const tmpCanvas = document.createElement("canvas");
+          const dpr = window.devicePixelRatio || 1;
+          tmpCanvas.width = W * dpr;
+          tmpCanvas.height = H * dpr;
+          const origCtx = ctx;
+          const origCanvas = canvas;
+          ctx = tmpCanvas.getContext("2d");
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          canvas = tmpCanvas;
+          redraw(true);
+          const link = document.createElement("a");
+          link.download = "parcel_map_transparent.png";
+          link.href = tmpCanvas.toDataURL("image/png");
+          link.click();
+          ctx = origCtx;
+          canvas = origCanvas;
+          redraw();
+          showToast("Transparent PNG exported!");
+        } else {
+          const link = document.createElement("a");
+          link.download = "parcel_map.png";
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+          showToast("PNG exported!");
+        }
+      }
 
-      // ── smartplot ──
+      function showToast(m) {
+        const t = $("toast");
+        t.textContent = m;
+        t.classList.add("show");
+        setTimeout(() => t.classList.remove("show"), 2000);
+      }
+
       // ═══════════════ AI SMART PLOT ═══════════════
       async function aiSmartPlot() {
         const text = $("deedInput").value.trim();
@@ -3556,14 +3644,14 @@
           showToast("Paste a description first");
           return;
         }
-      
+
         const endpoint = ($("aiEndpoint").value || "").trim();
         if (!endpoint) {
           showToast("Set your AI endpoint URL first");
           $("aiEndpoint").focus();
           return;
         }
-      
+
         // UI feedback
         const btn = $("aiPlotBtn");
         const origText = btn.textContent;
@@ -3571,28 +3659,28 @@
         btn.disabled = true;
         btn.style.opacity = "0.6";
         $("aiWarnings").style.display = "none";
-      
+
         try {
           const resp = await fetch(endpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ text }),
           });
-      
+
           if (!resp.ok) {
             const err = await resp
               .json()
               .catch(() => ({ error: "Network error" }));
             throw new Error(err.error || `HTTP ${resp.status}`);
           }
-      
+
           const data = await resp.json();
-      
+
           if (!data.tracts || !data.tracts.length) {
             showToast("AI found no plottable calls");
             return;
           }
-      
+
           // Show warnings if any
           if (data.warnings && data.warnings.length) {
             const wEl = $("aiWarnings");
@@ -3601,10 +3689,10 @@
               data.warnings.map((w) => "• " + w).join("<br>");
             wEl.style.display = "block";
           }
-      
+
           // Convert AI response into DeedPlot tracts
           saveUndo();
-      
+
           for (const aiTract of data.tracts) {
             const calls = aiTract.calls.map((c) => {
               const quad = c.quad,
@@ -3636,9 +3724,9 @@
               }
               return call;
             });
-      
+
             if (!calls.length) continue;
-      
+
             const t = createTract(calls, aiTract.name || "");
             if (aiTract.isException) {
               t.fillColor = "#FF8A65";
@@ -3647,12 +3735,12 @@
             }
             tracts.push(t);
           }
-      
+
           updateTractList();
           if (tracts.length > 0) selectTract(tracts.length - 1);
           fitToView();
           setTimeout(fitToView, 100);
-      
+
           const totalCalls = data.tracts.reduce(
             (s, t) => s + t.calls.length,
             0,
@@ -3669,26 +3757,23 @@
           btn.style.opacity = "1";
         }
       }
-      
+
       // Load saved AI endpoint on startup
       document.addEventListener("DOMContentLoaded", () => {
         const saved = localStorage.getItem("deedplot_ai_url");
         if (saved && $("aiEndpoint")) $("aiEndpoint").value = saved;
       });
-      
 
-
-      // ── mabf-export ──
       // ═══════════════ MABF EXPORT (Sandy Knoll Metes & Bounds) ═══════════════
       function exportMABF() {
         if (!tracts.length) {
           showToast("No tracts to export");
           return;
         }
-      
+
         // Helper: base64 encode a string (browser-native)
         const b64 = (s) => btoa(unescape(encodeURIComponent(s)));
-      
+
         // Helper: generate 32-char uppercase hex UID
         const uid = () => {
           let h = "";
@@ -3696,7 +3781,7 @@
             h += "0123456789ABCDEF"[Math.floor(Math.random() * 16)];
           return h;
         };
-      
+
         // Helper: convert DeedPlot hex color "#RRGGBB" to Sandy Knoll BGR integer hex "BBGGRR" (no #)
         const colorToSK = (hex) => {
           const r = hex.slice(1, 3),
@@ -3710,7 +3795,7 @@
             .toString(16)
             .toUpperCase();
         };
-      
+
         // Format a call as Sandy Knoll expects: "N DD:MM:SS E distance"
         // Sandy Knoll uses colon-delimited DMS. For zero min/sec it can omit them: "N 90 E 100"
         const formatSKCall = (c) => {
@@ -3728,10 +3813,10 @@
           }
           return `${c.quad} ${degFinal}:${String(minFinal).padStart(2, "0")}:${String(secVal).padStart(2, "0")} ${c.dir} ${c.dist.toFixed(2)}`;
         };
-      
+
         // Build XML as a string (no DOM needed — just concatenation matching Sandy Knoll's exact format)
         let xml = "<Plot>";
-      
+
         // --- Display section ---
         const title = ($("mapTitle") || {}).value || "Parcel Map";
         xml += "<Display>";
@@ -3752,17 +3837,17 @@
         xml +=
           "<DrawingOriginLat></DrawingOriginLat><DrawingOriginLong></DrawingOriginLong>";
         xml += "</Display>";
-      
+
         // Helper: font block XML generator (must be defined before the loop for full-function access)
         const fontBlock = (name, size, color, bold) =>
           `<FontBold>${bold ? 1 : 0}</FontBold><FontColor>${color}</FontColor><FontName>${name}</FontName><FontSize>${size}</FontSize><FontItalic>0</FontItalic><FontUnderline>0</FontUnderline>`;
-      
+
         // --- Layers ---
         xml += "<Layers>";
         for (let i = 0; i < tracts.length; i++) {
           const t = tracts[i];
           xml += "<Layer>";
-      
+
           // Calls
           xml += "<Calls>";
           for (const c of t.calls) {
@@ -3784,7 +3869,7 @@
             xml += "</CallExtData>";
           }
           xml += "</Calls>";
-      
+
           // Layer properties
           xml += "<AutoComplete>0</AutoComplete>";
           xml += "<ShowLength>0</ShowLength><ShowLengthAs>0</ShowLengthAs>";
@@ -3795,11 +3880,11 @@
           xml += "<ShowFloatCalls>0</ShowFloatCalls>";
           xml += "<ShowFloatCallsTop>0</ShowFloatCallsTop>";
           xml += "<ShowFloatCallsLeft>0</ShowFloatCallsLeft>";
-      
+
           // Offsets — Sandy Knoll uses these to position layers relative to drawing origin
           xml += `<xOffset>${t.pobX.toFixed(4)}</xOffset>`;
           xml += `<yOffset>${(-t.pobY).toFixed(4)}</yOffset>`;
-      
+
           // Layer name (base64 encoded)
           const layerName = t.name || `Layer ${i}`;
           xml += `<Caption>${b64(layerName)}</Caption>`;
@@ -3828,7 +3913,7 @@
           xml += "<ShowCallsType>0</ShowCallsType>";
           xml += "<FloatingCallListShaded>1</FloatingCallListShaded>";
           xml += "<FloatingCallListUnitType>0</FloatingCallListUnitType>";
-      
+
           // Fonts — use reasonable defaults
           xml += "<LayerFonts>";
           xml += `<ShowLengthsFont>${fontBlock("Arial", 12, "19C819", 1)}</ShowLengthsFont>`;
@@ -3837,7 +3922,7 @@
           xml += `<ShowAreaFont>${fontBlock("Arial", 12, "0", 1)}</ShowAreaFont>`;
           xml += `<ShowPerimeterFont>${fontBlock("Arial", 18, "0", 1)}</ShowPerimeterFont>`;
           xml += "</LayerFonts>";
-      
+
           xml += "<ShowEndPointLatLong>0</ShowEndPointLatLong>";
           xml += "<ShowEndPointLatLongDMS>0</ShowEndPointLatLongDMS>";
           xml += "<ShowEndPointLatLongLines>0</ShowEndPointLatLongLines>";
@@ -3855,7 +3940,7 @@
           xml +=
             "<FloatingCallListShowLayerName>0</FloatingCallListShowLayerName>";
           xml += "<ShowLastEndPoint>0</ShowLastEndPoint>";
-      
+
           xml += "<EndpointFloatingList>";
           xml += "<ShowEndpointList>0</ShowEndpointList>";
           xml += "<EndpointListLayerName>0</EndpointListLayerName>";
@@ -3865,12 +3950,12 @@
           xml += "<ShowFloatEndPointsTop>4</ShowFloatEndPointsTop>";
           xml += "<ShowFloatEndPointsLeft>11</ShowFloatEndPointsLeft>";
           xml += "</EndpointFloatingList>";
-      
+
           xml += "<ShowLayerArea>0</ShowLayerArea>";
           xml += "<ShowLayerAreaType>0</ShowLayerAreaType>";
           xml += "<ShowEndPointsXYUnit>0</ShowEndPointsXYUnit>";
           xml += "<ShowLayerCaptionRotation>0</ShowLayerCaptionRotation>";
-      
+
           xml += `<FloatingCallListFont>${fontBlock("Arial", 12, "0", 1)}</FloatingCallListFont>`;
           xml += "<FloatingCallListForceUnit>0</FloatingCallListForceUnit>";
           xml +=
@@ -3880,7 +3965,7 @@
           xml += "<FloatingCallListColumnCount>0</FloatingCallListColumnCount>";
           xml +=
             "<FloatingCallListShowCallNumber>0</FloatingCallListShowCallNumber>";
-      
+
           xml += "<FloatingLayerInfoList><FloatingInfo>";
           xml += "<X>5</X><Y>5</Y>";
           xml += "<ShowAcres>0</ShowAcres><ShowArea>0</ShowArea>";
@@ -3890,7 +3975,7 @@
           xml += "<Visible>0</Visible><ShowXYOffset>0</ShowXYOffset>";
           xml += "<Shaded>0</Shaded><ShadedUseFill>0</ShadedUseFill>";
           xml += "</FloatingInfo></FloatingLayerInfoList>";
-      
+
           xml += "<FloatingCallCallLabels>0</FloatingCallCallLabels>";
           xml += "<EndpointGraphicStlye>0</EndpointGraphicStlye>";
           xml += "<KMLExportRotation>0</KMLExportRotation>";
@@ -3899,13 +3984,13 @@
             "<ShowEndPointFloatListXYDecPoints>0</ShowEndPointFloatListXYDecPoints>";
           xml +=
             "<EndPointFloatListUseFillColor>0</EndPointFloatListUseFillColor>";
-      
+
           // Attributes — 10 empty slots as Sandy Knoll expects
           xml += "<Attributes><DrawingAttribs>";
           for (let a = 0; a < 10; a++)
             xml += "<LayerAttrib><Type>0</Type><Name/><Value/></LayerAttrib>";
           xml += "</DrawingAttribs></Attributes>";
-      
+
           xml += "<FloatingLayerAttributesList><FloatingInfo>";
           xml += "<X>5</X><Y>5</Y>";
           xml += "<ShowAcres>0</ShowAcres><ShowArea>0</ShowArea>";
@@ -3915,7 +4000,7 @@
           xml += "<Visible>0</Visible><ShowXYOffset>0</ShowXYOffset>";
           xml += "<Shaded>0</Shaded><ShadedUseFill>0</ShadedUseFill>";
           xml += "</FloatingInfo></FloatingLayerAttributesList>";
-      
+
           xml += "<ShowLayerPerimeter>0</ShowLayerPerimeter>";
           xml += "<IsGridLayer>0</IsGridLayer>";
           xml += "<EndpointListCalls>0</EndpointListCalls>";
@@ -3924,14 +4009,14 @@
           xml += "<ChildUID></ChildUID>";
           xml += "<LayerTextBlocks></LayerTextBlocks>";
           xml += `<ShowEndPointTextualFont>${fontBlock("Arial", 12, "0", 0)}</ShowEndPointTextualFont>`;
-      
+
           xml += "</Layer>";
         }
         xml += "</Layers>";
-      
+
         // --- Labels ---
         xml += "<Labels></Labels>";
-      
+
         // --- Background ---
         xml += "<Background>";
         xml += "<Picture>nil</Picture><Transparency>0</Transparency>";
@@ -3944,7 +4029,7 @@
         xml += "<ShowGrid>0</ShowGrid>";
         xml += "<DragOffsetX>0</DragOffsetX><DragOffsetY>0</DragOffsetY>";
         xml += "</Background>";
-      
+
         // --- Title Block ---
         xml += "<TitleBlock>";
         xml += "<ShowMe>1</ShowMe>";
@@ -3958,10 +4043,10 @@
         xml += "<IncludeCallNumber>0</IncludeCallNumber>";
         xml += "<HideUnits>0</HideUnits><ShowLayers>0</ShowLayers>";
         xml += "</TitleBlock>";
-      
+
         // --- Window ---
         xml += "<Window><Width>1200</Width><Height>800</Height></Window>";
-      
+
         // --- Misc ---
         xml += "<Misc>";
         xml += "<LabelsVisible>1</LabelsVisible>";
@@ -3975,7 +4060,7 @@
         xml += "</DrawingAttribs></Attributes>";
         xml += "<OriginTRS></OriginTRS>";
         xml += "</Misc>";
-      
+
         // --- Section Finder (37 empty sections in Township0) ---
         xml += "<SectionFinder><Townships><Township0><Sections>";
         for (let s = 0; s <= 36; s++)
@@ -3985,7 +4070,7 @@
         xml +=
           "<RangeIndex>5</RangeIndex><ShowDirection>0</ShowDirection><ShowArea>0</ShowArea>";
         xml += "</Township0></Townships></SectionFinder>";
-      
+
         // --- Remaining boilerplate ---
         xml += "<FloatingTextBlocks></FloatingTextBlocks>";
         xml += "<CreatedWithVersion>642</CreatedWithVersion>";
@@ -3997,15 +4082,15 @@
         xml +=
           "<DrawingLegend><Visible>0</Visible><Top>4</Top><Left>11</Left><Items></Items></DrawingLegend>";
         xml += "</Plot>";
-      
+
         // Build final file: version number + CRLF + XML (single line, no whitespace)
         const fileContent = "5\r\n" + xml + "\r\n";
-      
+
         // Generate filename from map title
         const safeName = (($("mapTitle") || {}).value || "DeedPlot_Export")
           .replace(/[^a-zA-Z0-9_\- ]/g, "")
           .replace(/\s+/g, "_");
-      
+
         // Trigger download
         const blob = new Blob([fileContent], {
           type: "application/octet-stream",
@@ -4023,176 +4108,65 @@
         h.classList.toggle("collapsed");
         h.nextElementSibling.classList.toggle("collapsed");
       }
-      
 
+      // ═══════════════ SHAPE DRAWING ═══════════════
+      function drawShape(shape, start, end, color = "#000000", width = 2) {
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.fillStyle = "transparent";
 
-      // ── mabf-import ──
-      // ═══════════════ MABF IMPORT ═══════════════
-      function importMABF(input) {
-        const file = input.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          try {
-            const text = e.target.result;
-            const lines = text.split(/\r?\n/);
-            if (lines.length < 2) {
-              showToast("Invalid MABF file");
-              return;
-            }
-            const version = lines[0].trim();
-            const xmlStr = lines.slice(1).join("");
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(xmlStr, "text/xml");
-            if (doc.querySelector("parsererror")) {
-              showToast("Failed to parse MABF XML");
-              return;
-            }
-      
-            const layers = doc.querySelectorAll("Layer");
-            if (!layers.length) {
-              showToast("No layers found in MABF");
-              return;
-            }
-      
-            saveUndo();
-            let imported = 0;
-      
-            for (const layer of layers) {
-              // Parse calls from <Calls><Line> elements
-              const lineEls = layer.querySelectorAll("Calls > Line");
-              const calls = [];
-              for (const lineEl of lineEls) {
-                const callStr = lineEl.textContent.trim();
-                if (!callStr) continue;
-                const parsed = parseSKCall(callStr);
-                if (parsed) calls.push(parsed);
-              }
-      
-              // Get layer name (base64 encoded in <Caption>)
-              let layerName = "";
-              const captionEl = layer.querySelector("Caption");
-              if (captionEl && captionEl.textContent) {
-                try {
-                  layerName = decodeURIComponent(
-                    escape(atob(captionEl.textContent)),
-                  );
-                } catch (ex) {
-                  layerName = captionEl.textContent;
-                }
-              }
-      
-              // Get offsets
-              const xOff =
-                parseFloat(layer.querySelector("xOffset")?.textContent) || 0;
-              const yOff =
-                parseFloat(layer.querySelector("yOffset")?.textContent) || 0;
-              const pobY = -yOff; // Sandy Knoll inverts Y axis
-      
-              // Get colors
-              let fillColor = "#CDDC39";
-              const fillColorEl = layer.querySelector("FillColor");
-              if (fillColorEl) {
-                fillColor = skColorToHex(fillColorEl.textContent);
-              }
-              let strokeColor = "#000000";
-              const lineColorEl = layer.querySelector("LineColor");
-              if (lineColorEl) {
-                strokeColor = skColorToHex(lineColorEl.textContent);
-              }
-      
-              // Get visibility/lock
-              const visible =
-                layer.querySelector("Visible")?.textContent !== "0";
-              const locked = layer.querySelector("Locked")?.textContent === "1";
-      
-              // Fill style
-              const fillStyle =
-                parseInt(layer.querySelector("FillStyle")?.textContent) || 0;
-              const hasFill = layer.querySelector("Fill")?.textContent !== "0";
-      
-              if (!calls.length) continue;
-      
-              const t = createTract(calls, layerName, xOff, pobY);
-              t.fillColor = fillColor;
-              t.strokeColor = strokeColor;
-              t.visible = visible;
-              t.locked = locked;
-              t.hatching = fillStyle >= 4;
-              if (hasFill) t.alpha = 0.65;
-      
-              // Line width
-              const lw = parseInt(
-                layer.querySelector("LineWidth")?.textContent,
-              );
-              if (!isNaN(lw)) t.strokeWidth = Math.max(1, lw);
-      
-              tracts.push(t);
-              imported++;
-            }
-      
-            if (!imported) {
-              showToast("No plottable layers found");
-              return;
-            }
-            updateTractList();
-            selectTract(tracts.length - 1);
-            fitToView();
-            setTimeout(fitToView, 100);
-            showToast(`Imported ${imported} layer(s) from MABF`);
-          } catch (err) {
-            console.error("MABF import error:", err);
-            showToast("Error reading MABF: " + err.message);
-          }
-        };
-        reader.readAsText(file);
-        input.value = ""; // Reset so same file can be re-imported
+        if (shape === "rect") {
+          const w = end.x - start.x;
+          const h = end.y - start.y;
+          ctx.strokeRect(start.x, start.y, w, h);
+        } else if (shape === "circle") {
+          const dx = end.x - start.x;
+          const dy = end.y - start.y;
+          const r = Math.sqrt(dx * dx + dy * dy);
+          ctx.beginPath();
+          ctx.arc(start.x, start.y, r, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (shape === "line") {
+          ctx.beginPath();
+          ctx.moveTo(start.x, start.y);
+          ctx.lineTo(end.x, end.y);
+          ctx.stroke();
+        } else if (shape === "arrow") {
+          const dx = end.x - start.x;
+          const dy = end.y - start.y;
+          const angle = Math.atan2(dy, dx);
+          const headlen = 20;
+
+          ctx.beginPath();
+          ctx.moveTo(start.x, start.y);
+          ctx.lineTo(end.x, end.y);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(end.x, end.y);
+          ctx.lineTo(
+            end.x - headlen * Math.cos(angle - Math.PI / 6),
+            end.y - headlen * Math.sin(angle - Math.PI / 6),
+          );
+          ctx.moveTo(end.x, end.y);
+          ctx.lineTo(
+            end.x - headlen * Math.cos(angle + Math.PI / 6),
+            end.y - headlen * Math.sin(angle + Math.PI / 6),
+          );
+          ctx.stroke();
+        } else if (shape === "dashedLine") {
+          ctx.setLineDash([5, 5]);
+          ctx.beginPath();
+          ctx.moveTo(start.x, start.y);
+          ctx.lineTo(end.x, end.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        ctx.restore();
       }
-      
-      // Parse a Sandy Knoll call string like "S 86:26:13 W 12.32" into a call object
-      function parseSKCall(str) {
-        str = str.trim();
-        // Pattern: QUAD DEG:MIN:SEC DIR DIST  or  QUAD DEG:MIN DIR DIST  or  QUAD DEG DIR DIST
-        const m = str.match(
-          /^([NS])\s+(\d+)(?::(\d+))?(?::(\d+(?:\.\d+)?))?\s+([EW])\s+([\d.]+)/,
-        );
-        if (!m) return null;
-        const quad = m[1],
-          deg = parseInt(m[2]),
-          min = parseInt(m[3]) || 0,
-          sec = parseFloat(m[4]) || 0,
-          dir = m[5],
-          dist = parseFloat(m[6]);
-        if (isNaN(dist) || dist <= 0) return null;
-        return {
-          quad,
-          deg,
-          min,
-          sec,
-          dir,
-          dist,
-          bearingStr: `${quad} ${String(deg).padStart(2, "0")}°${String(min).padStart(2, "0")}'${sec.toFixed(2).padStart(5, "0")}" ${dir}`,
-          labelOffset: null,
-          labelRotation: 0,
-          toRad: makeToRad(quad, deg, min, sec, dir),
-        };
-      }
-      
-      // Convert Sandy Knoll BGR integer color to hex "#RRGGBB"
-      function skColorToHex(val) {
-        const n = parseInt(val);
-        if (isNaN(n)) return "#000000";
-        const b = (n >> 16) & 0xff,
-          g = (n >> 8) & 0xff,
-          r = n & 0xff;
-        return (
-          "#" + [r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")
-        );
-      }
-      
 
-
-      // ── interaction ──
       // ═══════════════ INTERACTION ═══════════════
       function setupInteraction() {
         const container = $("canvasContainer");
@@ -4201,7 +4175,7 @@
           const rect = canvas.getBoundingClientRect(),
             sx = e.clientX - rect.left,
             sy = e.clientY - rect.top;
-      
+
           // Handle shape drawing mode
           if (currentDrawMode) {
             drawStart = { x: sx, y: sy };
@@ -4209,13 +4183,16 @@
             e.preventDefault();
             return;
           }
-      
+
           const hit = hitTest(sx, sy);
           if (hit) {
             saveUndo();
             dragTarget = hit;
             dragStartPos = { x: sx, y: sy };
-            if (hit.type === "label") {
+            if (hit.type === "anno") {
+              const s = w2s(annotations[hit.idx].wx, annotations[hit.idx].wy);
+              dragOffset = { x: sx - s.x, y: sy - s.y };
+            } else if (hit.type === "label") {
               const p = getLabelPos(tracts[hit.tractIdx], hit.callIdx);
               dragOffset = { x: sx - p.x, y: sy - p.y };
             } else if (hit.type === "tname") {
@@ -4256,14 +4233,14 @@
           const w = s2w(sx, sy);
           $("statusCoords").textContent =
             `X: ${w.x.toFixed(1)}  Y: ${w.y.toFixed(1)}`;
-      
+
           // Handle shape drawing preview
           if (currentDrawMode && drawStart) {
             redraw();
             drawShape(currentDrawMode, drawStart, { x: sx, y: sy }, $("shapeColor").value || "#000000", parseInt($("shapeWidth").value) || 2);
             return;
           }
-      
+
           if (dragTarget) {
             // Drag threshold: don't move until mouse has moved at least 3px from mousedown point
             if (dragStartPos) {
@@ -4279,7 +4256,10 @@
               legendPos = { sx: tx, sy: ty };
             } else {
               const wc = s2w(tx, ty);
-              if (dragTarget.type === "label") {
+              if (dragTarget.type === "anno") {
+                annotations[dragTarget.idx].wx = wc.x;
+                annotations[dragTarget.idx].wy = wc.y;
+              } else if (dragTarget.type === "label") {
                 tracts[dragTarget.tractIdx].calls[
                   dragTarget.callIdx
                 ].labelOffset = { wx: wc.x, wy: wc.y };
@@ -4316,16 +4296,16 @@
         });
         window.addEventListener("mouseup", () => {
           // Handle shape drawing completion
-      
+
           if (currentDrawMode && drawStart) {
             const rect = canvas.getBoundingClientRect(),
               sx = event.clientX - rect.left,
               sy = event.clientY - rect.top;
-      
+
             // Convert SCREEN coordinates to WORLD coordinates for both start and end
             const startWorld = s2w(drawStart.x, drawStart.y);
             const endWorld = s2w(sx, sy);
-      
+
             // Store shape in current tract
             const t = tracts[activeTractIdx];
             if (t) {
@@ -4341,27 +4321,27 @@
               });
               saveUndo();
             }
-      
+
             drawStart = null;
             currentDrawMode = null;
             updateDrawModeButtons();
             redraw();
             return;
           }
-      
+
           isDragging = false;
           dragTarget = null;
           dragStartPos = null;
           $("canvasContainer").style.cursor = "grab";
         });
-      
-        // Right-click on canvas shapes for editing
+
+        // Right-click on canvas annotations for deletion
         container.addEventListener("contextmenu", (e) => {
           const rect = canvas.getBoundingClientRect(),
             sx = e.clientX - rect.left,
             sy = e.clientY - rect.top;
           const hit = hitTest(sx, sy);
-          if (hit && hit.type === "shape") {
+          if (hit && (hit.type === "anno" || hit.type === "shape")) {
             e.preventDefault();
             const menu = document.createElement("div");
             menu.style.cssText = `
@@ -4375,7 +4355,17 @@
               z-index: 10000;
               padding: 4px 0;
             `;
-            if (hit.type === "shape") {
+            if (hit.type === "anno") {
+              const idx = hit.idx;
+              menu.innerHTML = `
+                <div style="padding:6px 12px;cursor:pointer;color:var(--dp-text);font-size:11px" onmousedown="event.stopPropagation();var pop=$('annoPopover');pop.classList.add('show');pop.style.left=(window.innerWidth/2-100)+'px';pop.style.top='100px';document.body.removeChild(this.closest('div'))">
+                  Edit annotations...
+                </div>
+                <div style="padding:6px 12px;cursor:pointer;color:#ef4444;font-size:11px" onmousedown="event.stopPropagation();saveUndo();annotations.splice(${idx},1);updateAnnoList();redraw();document.body.removeChild(this.closest('div'))">
+                  Delete this annotation
+                </div>
+              `;
+            } else if (hit.type === "shape") {
               const ti = hit.tractIdx, si = hit.shapeIdx;
               const currentColor = tracts[ti].shapes[si].color || "#000000";
               const currentWidth = tracts[ti].shapes[si].width || 2;
@@ -4408,7 +4398,7 @@
             }, 0);
           }
         });
-      
+
         container.addEventListener(
           "wheel",
           (e) => {
@@ -4431,17 +4421,21 @@
               redraw();
               return;
             }
-            // Plain scroll on label/tname/tpid = rotate that element
+            // Plain scroll on label/anno/tname/tpid = rotate that element
             if (
               !e.shiftKey &&
               hit &&
               (hit.type === "label" ||
+                hit.type === "anno" ||
                 hit.type === "tname" ||
                 hit.type === "tpid")
             ) {
               saveUndo();
               const d = e.deltaY > 0 ? -3 : 3;
-              if (hit.type === "label")
+              if (hit.type === "anno")
+                annotations[hit.idx].rotation =
+                  (annotations[hit.idx].rotation || 0) + d;
+              else if (hit.type === "label")
                 tracts[hit.tractIdx].calls[hit.callIdx].labelRotation =
                   (tracts[hit.tractIdx].calls[hit.callIdx].labelRotation || 0) +
                   d;
@@ -4466,7 +4460,7 @@
           },
           { passive: false },
         );
-      
+
         container.addEventListener("dblclick", (e) => {
           const rect = canvas.getBoundingClientRect(),
             sx = e.clientX - rect.left,
@@ -4483,6 +4477,8 @@
           } else if (hit.type === "tpid") {
             tracts[hit.tractIdx].pidOffset = null;
             tracts[hit.tractIdx].pidRotation = 0;
+          } else if (hit.type === "anno") {
+            annotations[hit.idx].rotation = 0;
           } else if (hit.type === "legend") {
             legendPos = { sx: null, sy: null };
           } else if (hit.type === "tract") {
@@ -4496,7 +4492,7 @@
           redraw();
           showToast("Reset");
         });
-      
+
         document.addEventListener("keydown", (e) => {
           if (e.ctrlKey && e.key === "z") {
             e.preventDefault();
@@ -4508,16 +4504,176 @@
           }
         });
       }
-      
 
+      // ═══════════════ MABF IMPORT ═══════════════
+      function importMABF(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          try {
+            const text = e.target.result;
+            const lines = text.split(/\r?\n/);
+            if (lines.length < 2) {
+              showToast("Invalid MABF file");
+              return;
+            }
+            const version = lines[0].trim();
+            const xmlStr = lines.slice(1).join("");
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(xmlStr, "text/xml");
+            if (doc.querySelector("parsererror")) {
+              showToast("Failed to parse MABF XML");
+              return;
+            }
 
-      // ── settings ──
+            const layers = doc.querySelectorAll("Layer");
+            if (!layers.length) {
+              showToast("No layers found in MABF");
+              return;
+            }
+
+            saveUndo();
+            let imported = 0;
+
+            for (const layer of layers) {
+              // Parse calls from <Calls><Line> elements
+              const lineEls = layer.querySelectorAll("Calls > Line");
+              const calls = [];
+              for (const lineEl of lineEls) {
+                const callStr = lineEl.textContent.trim();
+                if (!callStr) continue;
+                const parsed = parseSKCall(callStr);
+                if (parsed) calls.push(parsed);
+              }
+
+              // Get layer name (base64 encoded in <Caption>)
+              let layerName = "";
+              const captionEl = layer.querySelector("Caption");
+              if (captionEl && captionEl.textContent) {
+                try {
+                  layerName = decodeURIComponent(
+                    escape(atob(captionEl.textContent)),
+                  );
+                } catch (ex) {
+                  layerName = captionEl.textContent;
+                }
+              }
+
+              // Get offsets
+              const xOff =
+                parseFloat(layer.querySelector("xOffset")?.textContent) || 0;
+              const yOff =
+                parseFloat(layer.querySelector("yOffset")?.textContent) || 0;
+              const pobY = -yOff; // Sandy Knoll inverts Y axis
+
+              // Get colors
+              let fillColor = "#CDDC39";
+              const fillColorEl = layer.querySelector("FillColor");
+              if (fillColorEl) {
+                fillColor = skColorToHex(fillColorEl.textContent);
+              }
+              let strokeColor = "#000000";
+              const lineColorEl = layer.querySelector("LineColor");
+              if (lineColorEl) {
+                strokeColor = skColorToHex(lineColorEl.textContent);
+              }
+
+              // Get visibility/lock
+              const visible =
+                layer.querySelector("Visible")?.textContent !== "0";
+              const locked = layer.querySelector("Locked")?.textContent === "1";
+
+              // Fill style
+              const fillStyle =
+                parseInt(layer.querySelector("FillStyle")?.textContent) || 0;
+              const hasFill = layer.querySelector("Fill")?.textContent !== "0";
+
+              if (!calls.length) continue;
+
+              const t = createTract(calls, layerName, xOff, pobY);
+              t.fillColor = fillColor;
+              t.strokeColor = strokeColor;
+              t.visible = visible;
+              t.locked = locked;
+              t.hatching = fillStyle >= 4;
+              if (hasFill) t.alpha = 0.65;
+
+              // Line width
+              const lw = parseInt(
+                layer.querySelector("LineWidth")?.textContent,
+              );
+              if (!isNaN(lw)) t.strokeWidth = Math.max(1, lw);
+
+              tracts.push(t);
+              imported++;
+            }
+
+            if (!imported) {
+              showToast("No plottable layers found");
+              return;
+            }
+            updateTractList();
+            selectTract(tracts.length - 1);
+            fitToView();
+            setTimeout(fitToView, 100);
+            showToast(`Imported ${imported} layer(s) from MABF`);
+          } catch (err) {
+            console.error("MABF import error:", err);
+            showToast("Error reading MABF: " + err.message);
+          }
+        };
+        reader.readAsText(file);
+        input.value = ""; // Reset so same file can be re-imported
+      }
+
+      // Parse a Sandy Knoll call string like "S 86:26:13 W 12.32" into a call object
+      function parseSKCall(str) {
+        str = str.trim();
+        // Pattern: QUAD DEG:MIN:SEC DIR DIST  or  QUAD DEG:MIN DIR DIST  or  QUAD DEG DIR DIST
+        const m = str.match(
+          /^([NS])\s+(\d+)(?::(\d+))?(?::(\d+(?:\.\d+)?))?\s+([EW])\s+([\d.]+)/,
+        );
+        if (!m) return null;
+        const quad = m[1],
+          deg = parseInt(m[2]),
+          min = parseInt(m[3]) || 0,
+          sec = parseFloat(m[4]) || 0,
+          dir = m[5],
+          dist = parseFloat(m[6]);
+        if (isNaN(dist) || dist <= 0) return null;
+        return {
+          quad,
+          deg,
+          min,
+          sec,
+          dir,
+          dist,
+          bearingStr: `${quad} ${String(deg).padStart(2, "0")}°${String(min).padStart(2, "0")}'${sec.toFixed(2).padStart(5, "0")}" ${dir}`,
+          labelOffset: null,
+          labelRotation: 0,
+          toRad: makeToRad(quad, deg, min, sec, dir),
+        };
+      }
+
+      // Convert Sandy Knoll BGR integer color to hex "#RRGGBB"
+      function skColorToHex(val) {
+        const n = parseInt(val);
+        if (isNaN(n)) return "#000000";
+        const b = (n >> 16) & 0xff,
+          g = (n >> 8) & 0xff,
+          r = n & 0xff;
+        return (
+          "#" + [r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")
+        );
+      }
+
       // ═══════════════ SETTINGS PERSISTENCE ═══════════════
       function toggleSaveSettings(on) {
         localStorage.setItem("deedplot_save_settings", on ? "1" : "0");
         if (on) saveMapSettings();
       }
-      
+
       function saveMapSettings() {
         if (localStorage.getItem("deedplot_save_settings") !== "1") return;
         const settings = {
@@ -4535,7 +4691,7 @@
         };
         localStorage.setItem("deedplot_map_settings", JSON.stringify(settings));
       }
-      
+
       function loadMapSettings() {
         const on = localStorage.getItem("deedplot_save_settings") === "1";
         $("mapSaveSettings").checked = on;
@@ -4563,7 +4719,7 @@
           updateLegendStyle();
         } catch (ex) {}
       }
-      
+
       // Hook map settings controls to auto-save on change
       function hookSettingsSave() {
         for (const id of [
@@ -4588,7 +4744,7 @@
           if (el) el.addEventListener("change", saveMapSettings);
         }
       }
-      
+
       // ═══════════════ UI HELPERS ═══════════════
       function switchRightPanel() {
         const layP = $("rpLayerProps");
@@ -4600,7 +4756,7 @@
           layP.style.display = "none";
         }
       }
-      
+
       function toggleExportMenu() {
         const dd = $("exportMenu");
         dd.classList.toggle("show");
@@ -4617,7 +4773,7 @@
           }, 0);
         }
       }
-      
+
       function addEmptyLayer() {
         saveUndo();
         const t = createTract([], "");
@@ -4625,7 +4781,7 @@
         selectTract(tracts.length - 1);
         showToast("Empty layer added");
       }
-      
+
       // ═══════════════ INIT ═══════════════
       window.addEventListener("DOMContentLoaded", () => {
         initCanvas();
@@ -4647,7 +4803,6 @@
         resizeCanvas();
         redraw();
       });
-
     </script>
   </body>
 </html>

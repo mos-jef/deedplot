@@ -1,0 +1,1037 @@
+  <body>
+    <div class="app">
+      <!-- LEFT PANEL -->
+
+      <div class="lp">
+        <div class="lp-logo">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+            <line x1="8" y1="2" x2="8" y2="18" />
+            <line x1="16" y1="6" x2="16" y2="22" />
+          </svg>
+          DeedPlot
+        </div>
+
+        <div class="sec">
+          <div class="sec-t">Legal description</div>
+          <textarea
+            class="ta"
+            id="deedInput"
+            placeholder="Paste metes and bounds legal description here..."
+          ></textarea>
+          <div class="br">
+            <button class="bt bt-plot" onclick="parseDeed()">Plot</button>
+            <button class="bt bt-ai" onclick="aiSmartPlot()" id="aiPlotBtn">
+              Smart Plot
+            </button>
+            <button
+              class="bt bt-x"
+              onclick="
+                document.getElementById('deedInput').value = '';
+                clearTracts();
+              "
+            >
+              Clear
+            </button>
+          </div>
+          <div
+            id="aiWarnings"
+            style="
+              display: none;
+              margin-top: 4px;
+              background: rgba(255, 180, 50, 0.08);
+              border: 1px solid rgba(255, 180, 50, 0.2);
+              border-radius: 4px;
+              padding: 5px 6px;
+              font-size: 9px;
+              line-height: 1.4;
+              color: #f0c050;
+              max-height: 80px;
+              overflow-y: auto;
+            "
+          ></div>
+          <div class="ir" style="margin-top: 4px">
+            <label
+              style="min-width: 50px; font-size: 8px; color: var(--dp-text3)"
+              >AI Endpoint</label
+            ><input
+              class="inp"
+              id="aiEndpoint"
+              value="https://deedplot-ai.deedplot.workers.dev"
+              style="font-size: 8px"
+              oninput="localStorage.setItem('deedplot_ai_url', this.value)"
+            />
+          </div>
+        </div>
+
+        <div class="sec">
+          <div class="sec-t">Position</div>
+          <div class="ir">
+            <label>X</label
+            ><input
+              class="inp"
+              id="propPobX"
+              type="number"
+              step="0.01"
+              value="0"
+              onchange="updatePOB()"
+              style="width: 60px"
+            /><label>Y</label
+            ><input
+              class="inp"
+              id="propPobY"
+              type="number"
+              step="0.01"
+              value="0"
+              onchange="updatePOB()"
+              style="width: 60px"
+            /><label>↻</label
+            ><input
+              class="inp"
+              id="propTractRotVal"
+              type="number"
+              step="0.1"
+              value="0"
+              style="width: 36px"
+              onchange="updateTractRotation(+this.value)"
+            /><span style="font-size: 9px; color: var(--dp-text3)">°</span>
+          </div>
+          <input
+            type="range"
+            id="propTractRot"
+            min="-180"
+            max="180"
+            value="0"
+            step="0.5"
+            oninput="updateTractRotation(+this.value)"
+            style="width: 100%; margin-top: 3px"
+          />
+        </div>
+
+        <div class="sec sec-flex">
+          <div class="sec-t">
+            Layers
+            <span
+              class="sec-plus"
+              onclick="addEmptyLayer()"
+              title="Add empty layer"
+              >+</span
+            >
+          </div>
+          <div id="tractList">
+            <div
+              style="
+                color: var(--dp-text3);
+                font-size: 10px;
+                padding: 8px 0;
+                text-align: center;
+              "
+            >
+              No layers.
+            </div>
+          </div>
+        </div>
+
+        <!-- MAP PROPERTIES SECTION (MOVED TO LEFT SIDEBAR) -->
+        <div class="sec">
+          <div class="sec-t">Map Properties</div>
+          <div class="ir">
+            <label style="min-width: 32px">Title</label>
+            <input
+              class="inp"
+              id="mapTitle"
+              placeholder="(optional)"
+              oninput="redraw()"
+            />
+          </div>
+          <div class="ir">
+            <label style="min-width: 32px">Subtitle</label>
+            <input
+              class="inp"
+              id="mapSubtitle"
+              placeholder="(optional)"
+              oninput="redraw()"
+            />
+          </div>
+
+          <div class="ir">
+            <label>Title color</label>
+            <input
+              type="color"
+              id="titleColor"
+              value="#000000"
+              oninput="redraw()"
+            />
+          </div>
+          <div class="ir">
+            <label>Sub color</label>
+            <input
+              type="color"
+              id="subColor"
+              value="#000000"
+              oninput="redraw()"
+            />
+            <label>Op</label>
+            <input
+              type="range"
+              id="subAlpha"
+              min="0"
+              max="100"
+              value="100"
+              oninput="redraw()"
+              style="width: 40px"
+            />
+          </div>
+
+          <div class="sec-label">Colors</div>
+          <div class="ir">
+            <label>BG</label>
+            <input type="color" id="mapBg" value="#ffffff" oninput="redraw()" />
+            <label>Grid</label>
+            <input
+              type="color"
+              id="mapGrid"
+              value="#e0e0e0"
+              oninput="redraw()"
+            />
+            <label>Text</label>
+            <input
+              type="color"
+              id="mapTextColor"
+              value="#000000"
+              oninput="redraw()"
+            />
+          </div>
+          <div class="sec-label">Display</div>
+          <div
+            style="display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px"
+          >
+            <label class="ck">
+              <input
+                type="checkbox"
+                id="mapShowGrid"
+                checked
+                onchange="redraw()"
+              />
+              Grid
+            </label>
+            <label class="ck">
+              <input
+                type="checkbox"
+                id="mapShowNorth"
+                checked
+                onchange="redraw()"
+              />
+              North
+            </label>
+            <label class="ck">
+              <input
+                type="checkbox"
+                id="mapShowScale"
+                checked
+                onchange="redraw()"
+              />
+              Scale
+            </label>
+            <label class="ck">
+              <input
+                type="checkbox"
+                id="mapShowLegend"
+                checked
+                onchange="redraw()"
+              />
+              Call box
+            </label>
+            <label class="ck">
+              <input
+                type="checkbox"
+                id="mapSaveSettings"
+                onchange="toggleSaveSettings(this.checked)"
+              />
+              Remember
+            </label>
+          </div>
+          <div class="sec-label">Call Points</div>
+          <div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:2px;align-items:center">
+            <label class="ck"
+              ><input
+                type="checkbox"
+                id="cpShow"
+                checked
+                onchange="callPointStyle.show=this.checked;redraw()"
+              />Show</label
+            >
+            <div class="ir" style="margin:0;flex:1;min-width:80px">
+              <label>Size</label>
+              <input
+                type="range"
+                id="cpRadius"
+                min="0"
+                max="10"
+                value="4"
+                step="1"
+                oninput="callPointStyle.radius=+this.value;$('cpRadiusV').textContent=this.value;redraw()"
+              />
+              <span id="cpRadiusV" style="font-size:8px;color:var(--dp-text3);min-width:12px">4</span>
+            </div>
+            <div class="ir" style="margin:0">
+              <label>Color</label>
+              <input
+                type="color"
+                id="cpColor"
+                value="#ffffff"
+                oninput="callPointStyle.color=this.value;redraw()"
+              />
+            </div>
+          </div>
+          <div class="sec-label">Legend style</div>
+          <div class="ir">
+            <label>BG</label>
+            <input
+              type="color"
+              id="legendBgColor"
+              value="#ffffff"
+              oninput="
+                updateLegendStyle();
+                redraw();
+              "
+            />
+          </div>
+          <label class="ck" style="margin-top: 3px">
+            <input
+              type="checkbox"
+              id="legendDropShadow"
+              checked
+              onchange="
+                updateLegendStyle();
+                redraw();
+              "
+            />
+            Drop shadow
+          </label>
+          <div class="br" style="margin-top: 6px">
+            <button class="btn sm" onclick="exportPNG(false)">
+              Export PNG
+            </button>
+            <button class="btn sm" onclick="exportMABF()">Export MABF</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- END OF LEFT SIDEBAR -->
+
+      <!-- CANVAS -->
+      <div class="cv" id="canvasContainer">
+        <canvas id="mapCanvas"></canvas>
+
+        <!-- Floating toolbar -->
+        <div class="ftb">
+          <button class="ftb-b" onclick="fitToView()" title="Fit view">
+            ⛶
+          </button>
+          <div class="ftb-sep"></div>
+          <button
+            class="ftb-b"
+            onclick="toggleDrawMode('rect')"
+            title="Draw rectangle"
+            id="drawRectBtn"
+          >
+            ▭
+          </button>
+          <button
+            class="ftb-b"
+            onclick="toggleDrawMode('circle')"
+            title="Draw circle"
+            id="drawCircleBtn"
+          >
+            ◯
+          </button>
+          <button
+            class="ftb-b"
+            onclick="toggleDrawMode('line')"
+            title="Draw line"
+            id="drawLineBtn"
+          >
+            /
+          </button>
+          <button
+            class="ftb-b"
+            onclick="toggleDrawMode('arrow')"
+            title="Draw arrow"
+            id="drawArrowBtn"
+          >
+            →
+          </button>
+          <button
+            class="ftb-b"
+            onclick="toggleDrawMode('dashedLine')"
+            title="Draw dashed line"
+            id="drawDashedBtn"
+          >
+            ⋯
+          </button>
+          <div class="ftb-sep"></div>
+          <input
+            type="color"
+            id="shapeColor"
+            value="#000000"
+            title="Shape color"
+            style="width:20px;height:20px;border:1px solid var(--dp-border-lt);border-radius:3px;padding:0;cursor:pointer;vertical-align:middle"
+          />
+          <select
+            id="shapeWidth"
+            title="Shape line width"
+            style="width:36px;height:20px;font-size:9px;background:var(--dp-field);color:var(--dp-text);border:1px solid var(--dp-border-lt);border-radius:3px;padding:0 2px;cursor:pointer;vertical-align:middle"
+          >
+            <option value="1">1px</option>
+            <option value="2" selected>2px</option>
+            <option value="3">3px</option>
+            <option value="4">4px</option>
+            <option value="5">5px</option>
+          </select>
+          <button
+            class="ftb-b"
+            onclick="toggleBgImageUI()"
+            title="Background image"
+            id="bgImgBtn"
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <path d="M21 15l-5-5L5 21" />
+            </svg>
+          </button>
+          <input
+            type="file"
+            id="bgInput"
+            accept="image/*"
+            onchange="loadBgImage(this)"
+            style="display: none"
+          />
+          <input
+            type="file"
+            id="mabfInput"
+            accept=".mabf"
+            onchange="importMABF(this)"
+            style="display: none"
+          />
+          <div class="ftb-sep"></div>
+          <button
+            class="ftb-b"
+            onclick="toggleExportMenu()"
+            title="Export / Import"
+            id="exportMenuBtn"
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            <div class="ftb-dd" id="exportMenu">
+              <div class="ftb-dd-item" onclick="exportPNG(false)">
+                Export PNG
+              </div>
+              <div class="ftb-dd-item" onclick="exportPNG(true)">
+                Export transparent PNG
+              </div>
+              <div class="ftb-dd-item" onclick="exportMABF()">Export .MABF</div>
+              <div
+                class="ftb-dd-item"
+                style="
+                  border-top: 1px solid var(--dp-border-lt);
+                  margin-top: 2px;
+                  padding-top: 4px;
+                "
+                onclick="document.getElementById('mabfInput').click()"
+              >
+                Import .MABF
+              </div>
+            </div>
+          </button>
+          <div class="ftb-sep"></div>
+          <div class="stat">
+            <span id="statusCoords">X: 0 Y: 0</span>
+            <span id="statusZoom">25%</span>
+            <span id="statusTracts">0 layers</span>
+          </div>
+        </div>
+
+
+        <!-- BG Image popover -->
+        <div class="popover" id="bgPopover">
+          <div class="sec-t">Background image</div>
+          <div class="ir">
+            <label>Opacity</label
+            ><input
+              type="range"
+              id="bgAlpha"
+              min="0"
+              max="100"
+              value="40"
+              oninput="
+                bgS.alpha = this.value / 100;
+                redraw();
+              "
+            />
+          </div>
+          <div class="ir">
+            <label>Scale</label
+            ><input
+              type="range"
+              id="bgScale"
+              min="1"
+              max="2000"
+              value="100"
+              oninput="
+                bgS.scale = this.value / 100;
+                redraw();
+              "
+            /><span
+              id="bgScaleV"
+              style="font-size: 8px; color: var(--dp-text3); min-width: 28px"
+              >100%</span
+            >
+          </div>
+          <div class="ir">
+            <label>Rot</label
+            ><input
+              type="range"
+              id="bgRot"
+              min="-180"
+              max="180"
+              value="0"
+              oninput="
+                bgS.rotation = +this.value;
+                redraw();
+              "
+            /><span
+              id="bgRotV"
+              style="font-size: 8px; color: var(--dp-text3); min-width: 20px"
+              >0°</span
+            >
+          </div>
+          <div class="ir">
+            <label>Fine</label
+            ><input
+              type="range"
+              id="bgRotFine"
+              min="-50"
+              max="50"
+              value="0"
+              step="1"
+              oninput="
+                bgS.rotFine = this.value / 10;
+                redraw();
+              "
+            /><span
+              id="bgRotFineV"
+              style="font-size: 8px; color: var(--dp-text3); min-width: 24px"
+              >0.0°</span
+            >
+          </div>
+          <label class="ck" style="margin-top: 3px"
+            ><input
+              type="checkbox"
+              id="bgShow"
+              checked
+              onchange="
+                bgS.show = this.checked;
+                redraw();
+              "
+            />
+            Show</label
+          >
+          <button
+            class="btn sm"
+            onclick="$('bgInput').click(); $('bgPopover').classList.remove('show')"
+            style="margin-top: 3px; width: 100%"
+          >
+            Change Image
+          </button>
+          <button
+            class="btn sm danger"
+            onclick="clearBgImage(); $('bgPopover').classList.remove('show')"
+            style="margin-top: 3px; width: 100%"
+          >
+            Remove
+          </button>
+        </div>
+
+        <!-- Drop shadow popover for Effects -->
+        <div class="popover" id="dropShadowPopover">
+          <div class="sec-t">Drop shadow <span class="sec-plus" onclick="$('dropShadowPopover').classList.remove('show')" title="Close" style="cursor:pointer;font-size:14px;font-weight:700">&times;</span></div>
+          <div class="ir">
+            <label>X</label
+            ><input
+              type="number"
+              class="inp"
+              id="shadowX"
+              min="-20"
+              max="20"
+              value="2"
+              style="width:50px"
+              oninput="
+                updateDropShadow();
+                redraw();
+              "
+            />
+          </div>
+          <div class="ir">
+            <label>Y</label
+            ><input
+              type="number"
+              class="inp"
+              id="shadowY"
+              min="-20"
+              max="20"
+              value="2"
+              style="width:50px"
+              oninput="
+                updateDropShadow();
+                redraw();
+              "
+            />
+          </div>
+          <div class="ir">
+            <label>Blur</label
+            ><input
+              type="number"
+              class="inp"
+              id="shadowBlur"
+              min="0"
+              max="20"
+              value="4"
+              style="width:50px"
+              oninput="
+                updateDropShadow();
+                redraw();
+              "
+            />
+          </div>
+          <div class="ir">
+            <label>Color</label
+            ><input
+              type="color"
+              id="shadowColor"
+              value="#000000"
+              oninput="
+                updateDropShadow();
+                redraw();
+              "
+            /><label>Op</label
+            ><input
+              type="number"
+              class="inp"
+              id="shadowAlpha"
+              min="0"
+              max="100"
+              value="30"
+              style="width:50px"
+              oninput="
+                updateDropShadow();
+                redraw();
+              "
+            />
+          </div>
+          <button
+            class="btn sm danger"
+            onclick="removeDropShadow()"
+            style="margin-top: 6px; width: 100%"
+          >
+            Remove shadow
+          </button>
+        </div>
+      </div>
+
+      <!-- RIGHT PANEL (context-sensitive) -->
+
+      <div class="rp">
+
+        <!-- Layer Properties (shown when a layer is selected) -->
+        <div id="rpLayerProps" style="display: none">
+          <div class="rp-title">Layer properties</div>
+          <div class="sec">
+            <div class="ir">
+              <label style="min-width: 32px">Name</label
+              ><input
+                class="inp"
+                id="propName"
+                placeholder="(optional)"
+                oninput="updateProp('name', this.value)"
+              />
+            </div>
+            <div class="ir">
+              <label style="min-width: 32px">Parcel ID</label
+              ><input
+                class="inp"
+                id="propParcelId"
+                placeholder="(optional)"
+                oninput="updateProp('parcelId', this.value)"
+              />
+            </div>
+          </div>
+          <div class="sec">
+            <div class="sec-label">Fill &amp; stroke</div>
+            <div class="ir">
+              <label>Fill</label
+              ><input
+                type="color"
+                id="propFill"
+                value="#CDDC39"
+                oninput="updateProp('fillColor', this.value)"
+              /><label>Op</label
+              ><input
+                type="range"
+                id="propAlpha"
+                min="0"
+                max="100"
+                value="65"
+                oninput="updateProp('alpha', this.value / 100)"
+                style="width: 50px"
+              />
+            </div>
+            <div class="ir">
+              <label>Stroke</label
+              ><input
+                type="color"
+                id="propStroke"
+                value="#000000"
+                oninput="updateProp('strokeColor', this.value)"
+              /><label>W</label
+              ><input
+                type="range"
+                id="propStrokeW"
+                min="0"
+                max="8"
+                value="3"
+                oninput="updateProp('strokeWidth', +this.value)"
+                style="width: 40px"
+              /><span
+                id="strokeWVal"
+                style="font-size: 8px; color: var(--dp-text3)"
+                >3</span
+              >
+            </div>
+          </div>
+          <div class="sec">
+            <div class="sec-label">Name display</div>
+            <div class="ir">
+              <label>Color</label
+              ><input
+                type="color"
+                id="propNameColor"
+                value="#000000"
+                oninput="updateProp('nameColor', this.value)"
+              /><label>Sz</label
+              ><input
+                type="range"
+                id="propNameSize"
+                min="8"
+                max="30"
+                value="12"
+                oninput="updateProp('nameSize', +this.value)"
+                style="width: 40px"
+              /><span
+                id="nameSizeVal"
+                style="font-size: 8px; color: var(--dp-text3)"
+                >12</span
+              >
+            </div>
+            <div class="ir">
+              <label>BG</label
+              ><input
+                type="color"
+                id="propNameBg"
+                value="#ffffff"
+                oninput="updateProp('nameBg', this.value)"
+              /><label>Op</label
+              ><input
+                type="range"
+                id="propNameBgA"
+                min="0"
+                max="100"
+                value="0"
+                oninput="updateProp('nameBgAlpha', this.value / 100)"
+                style="width: 40px"
+              /><label class="ck"
+                ><input
+                  type="checkbox"
+                  id="propNameShowBg"
+                  onchange="updateProp('nameShowBg', this.checked)"
+                />
+                BG</label
+              >
+            </div>
+            <div class="sec">
+              <div class="sec-label">Call box text color</div>
+              <div class="ir">
+                <label>Color</label
+                ><input
+                  type="color"
+                  id="propLegendTextColor"
+                  value="#000000"
+                  oninput="updateProp('legendTextColor', this.value)"
+                />
+              </div>
+            </div>
+          </div>
+          <div class="sec" style="display: none" id="pidDisplayStub">
+            <div class="sec-label">Parcel ID display</div>
+            <div class="ir">
+              <label>Color</label
+              ><input
+                type="color"
+                id="propPidColor"
+                value="#000000"
+                oninput="updateProp('pidColor', this.value)"
+              /><label>Sz</label
+              ><input
+                type="range"
+                id="propPidSize"
+                min="8"
+                max="36"
+                value="17"
+                oninput="updateProp('pidSize', +this.value)"
+                style="width: 40px"
+              /><span
+                id="pidSizeVal"
+                style="font-size: 8px; color: var(--dp-text3)"
+                >17</span
+              >
+            </div>
+            <div class="ir">
+              <label>BG</label
+              ><input
+                type="color"
+                id="propPidBg"
+                value="#ffffff"
+                oninput="updateProp('pidBg', this.value)"
+              /><label>Op</label
+              ><input
+                type="range"
+                id="propPidBgA"
+                min="0"
+                max="100"
+                value="80"
+                oninput="updateProp('pidBgAlpha', this.value / 100)"
+                style="width: 40px"
+              /><label class="ck"
+                ><input
+                  type="checkbox"
+                  id="propPidShowBg"
+                  onchange="updateProp('pidShowBg', this.checked)"
+                />
+                BG</label
+              >
+            </div>
+          </div>
+          <div class="sec">
+            <div class="sec-label">Call labels</div>
+            <div class="ir">
+              <label>Color</label
+              ><input
+                type="color"
+                id="propLabelColor"
+                value="#000000"
+                oninput="updateProp('labelColor', this.value)"
+              /><label>Sz</label
+              ><input
+                type="range"
+                id="propFontSize"
+                min="6"
+                max="28"
+                value="12"
+                oninput="updateProp('fontSize', +this.value)"
+                style="width: 40px"
+              /><span
+                id="fontSizeVal"
+                style="font-size: 8px; color: var(--dp-text3)"
+                >12</span
+              >
+            </div>
+            <div class="ir">
+              <label>BG</label
+              ><input
+                type="color"
+                id="propLabelBg"
+                value="#ffffff"
+                oninput="updateProp('labelBg', this.value)"
+              /><label>Op</label
+              ><input
+                type="range"
+                id="propLabelBgA"
+                min="0"
+                max="100"
+                value="85"
+                oninput="updateProp('labelBgAlpha', this.value / 100)"
+                style="width: 40px"
+              /><label class="ck"
+                ><input
+                  type="checkbox"
+                  id="propShowLabelBg"
+                  onchange="updateProp('showLabelBg', this.checked)"
+                />
+                BG</label
+              >
+            </div>
+          </div>
+          <div class="sec">
+            <div class="sec-label">Leader lines</div>
+            <div class="ir">
+              <label>Color</label
+              ><input
+                type="color"
+                id="propLeaderColor"
+                value="#000000"
+                oninput="updateProp('leaderColor', this.value)"
+              /><label>W</label
+              ><input
+                type="range"
+                id="propLeaderW"
+                min="0.5"
+                max="4"
+                step="0.5"
+                value="1"
+                oninput="updateProp('leaderWidth', +this.value)"
+                style="width: 30px"
+              /><label>Op</label
+              ><input
+                type="range"
+                id="propLeaderA"
+                min="10"
+                max="100"
+                value="50"
+                oninput="updateProp('leaderAlpha', this.value / 100)"
+                style="width: 30px"
+              />
+            </div>
+            <div class="ir">
+              <label>End</label
+              ><select
+                class="inp"
+                id="propLeaderEnd"
+                onchange="updateProp('leaderEnd', this.value)"
+                style="flex: 1"
+              >
+                <option value="diamond">◆ Diamond</option>
+                <option value="circle">● Circle</option>
+                <option value="triangle">▶ Triangle</option>
+                <option value="triangle-rev">◀ Rev Tri</option>
+                <option value="arrow">→ Arrow</option>
+                <option value="none">None</option>
+              </select>
+            </div>
+          </div>
+          <div class="sec">
+            <div class="sec-label">Display toggles</div>
+            <div
+              style="display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px"
+            >
+              <label class="ck"
+                ><input
+                  type="checkbox"
+                  id="propLeaderLines"
+                  checked
+                  onchange="updateProp('leaderLines', this.checked)"
+                />
+                Leaders</label
+              >
+              <label class="ck"
+                ><input
+                  type="checkbox"
+                  id="propShowBearings"
+                  checked
+                  onchange="updateProp('showBearings', this.checked)"
+                />
+                Bearings</label
+              >
+              <label class="ck"
+                ><input
+                  type="checkbox"
+                  id="propShowDistances"
+                  checked
+                  onchange="updateProp('showDistances', this.checked)"
+                />
+                Distances</label
+              >
+              <label class="ck"
+                ><input
+                  type="checkbox"
+                  id="propNumberCalls"
+                  onchange="updateProp('numberCalls', this.checked)"
+                />
+                Numbers</label
+              >
+              <label class="ck"
+                ><input
+                  type="checkbox"
+                  id="propHatch"
+                  onchange="updateProp('hatching', this.checked)"
+                />
+                Hatch</label
+              >
+            </div>
+          </div>
+          <div class="sec">
+            <div class="sec-label">Effects</div>
+            <button
+              class="btn sm"
+              onclick="toggleDropShadowPopover()"
+              style="width: 100%; margin-top: 2px"
+            >
+              Drop shadow...
+            </button>
+          </div>
+          <div
+            class="br"
+            style="
+              margin-top: 6px;
+              margin-left: 10px;
+              margin-right: 10px;
+              margin-bottom: 10px;
+            "
+          >
+            <button class="btn sm" onclick="exportPNG(false)">
+              Export PNG
+            </button>
+            <button class="btn sm" onclick="exportMABF()">Export MABF</button>
+          </div>
+          <div class="sec">
+            <div class="sec-label">Call schedule</div>
+            <div id="callSchedule">
+              <div
+                style="
+                  color: var(--dp-text3);
+                  font-size: 9px;
+                  text-align: center;
+                  padding: 4px 0;
+                "
+              >
+                Select a layer.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="toast" id="toast"></div>
+
