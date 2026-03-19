@@ -117,8 +117,12 @@ window.addEventListener("DOMContentLoaded", () => {
   initCanvas();
   loadMapSettings();
   hookSettingsSave();
+  initAnnotations();
+  initDsModal();
+  initImageModal();
   setupInteraction();
   switchRightPanel();
+  updateImgSettingsBtn();
   redraw();
   setTimeout(() => {
     resizeCanvas();

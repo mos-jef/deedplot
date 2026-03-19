@@ -31,6 +31,7 @@ function redraw(transparent) {
   for (let i = 0; i < tracts.length; i++)
     drawTract(tracts[i], i === activeTractIdx);
   drawShapes(); // ADDED THIS LINE
+  drawAnnotations();
   const mc = $("mapTextColor").value;
   if ($("mapShowNorth").checked) drawNorthArrow(W, H, mc);
   if ($("mapShowScale").checked) drawScaleBar(W, H, mc);
@@ -159,9 +160,7 @@ function drawTract(tract, isActive) {
 
   // Fill
   ctx.beginPath();
-  sp.forEach((p, i) =>
-    i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y),
-  );
+  sp.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
   ctx.closePath();
   ctx.globalAlpha = tract.alpha;
   ctx.fillStyle = tract.fillColor;
@@ -212,15 +211,13 @@ function drawTract(tract, isActive) {
     const r = call._ptRange || { start: i, end: i + 1 };
     const sp0 = w2s(pts[r.start].x, pts[r.start].y);
     const sp1 = w2s(pts[r.end].x, pts[r.end].y);
-    const mx = pos.ax || (sp0.x + sp1.x) / 2,
-      my = pos.ay || (sp0.y + sp1.y) / 2;
+    // Always anchor leader line to line midpoint (not vertex)
+    const mx = (sp0.x + sp1.x) / 2,
+      my = (sp0.y + sp1.y) / 2;
     const dx2 = sp1.x - sp0.x,
       dy2 = sp1.y - sp0.y,
       ll = Math.sqrt(dx2 * dx2 + dy2 * dy2);
-    const lw = lines.reduce(
-      (m, l) => Math.max(m, l.length * fs * 0.55),
-      0,
-    );
+    const lw = lines.reduce((m, l) => Math.max(m, l.length * fs * 0.55), 0);
     const hasM = !!call.labelOffset,
       autoL = tract.leaderLines && (ll < lw * 1.2 || ll < 60);
     if (hasM || autoL) {
@@ -243,9 +240,7 @@ function drawTract(tract, isActive) {
     }
     let ta = ((call.labelRotation || 0) * Math.PI) / 180;
     if (!hasM && !autoL) {
-      ta =
-        Math.atan2(dy2, dx2) +
-        ((call.labelRotation || 0) * Math.PI) / 180;
+      ta = Math.atan2(dy2, dx2) + ((call.labelRotation || 0) * Math.PI) / 180;
       if (ta > Math.PI / 2) ta -= Math.PI;
       if (ta < -Math.PI / 2) ta += Math.PI;
     }
@@ -255,10 +250,7 @@ function drawTract(tract, isActive) {
     const lh = fs * 1.3,
       th = lines.length * lh;
     ctx.font = `500 ${fs}px 'JetBrains Mono',monospace`;
-    const mw = lines.reduce(
-        (m, l) => Math.max(m, ctx.measureText(l).width),
-        0,
-      ),
+    const mw = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0),
       pad = 4;
     if (tract.showLabelBg) {
       const bg = hexToRgb(tract.labelBg);
@@ -354,7 +346,6 @@ function drawTract(tract, isActive) {
   ctx.fillText(tract.name, 0, 0);
   ctx.restore();
 }
-
 
 // Draw persistent shapes for active tract
 function drawShapes() {
@@ -519,4 +510,3 @@ function drawLegend(W, H) {
   }
   ctx.restore();
 }
-

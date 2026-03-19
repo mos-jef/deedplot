@@ -160,7 +160,7 @@ function parseBearing(text) {
     sec,
     dir,
     dist,
-    bearingStr: `${quad} ${String(deg).padStart(2, "0")}°${String(min).padStart(2, "0")}'${sec.toFixed(2).padStart(5, "0")}" ${dir}`,
+    bearingStr: `${quad} ${String(deg).padStart(2, "0")}°${String(min).padStart(2, "0")}'${sec % 1 === 0 ? String(Math.round(sec)).padStart(2, "0") : sec.toFixed(2).padStart(5, "0")}" ${dir}`,
     labelOffset: null,
     labelRotation: 0,
     toRad: makeToRad(quad, deg, min, sec, dir),
@@ -289,7 +289,7 @@ function parseCurveCall(text) {
     mi = chordBearing.min,
     s = chordBearing.sec,
     dir = chordBearing.dir;
-  const bearingStr = `${q} ${String(d).padStart(2, "0")}°${String(mi).padStart(2, "0")}'${s.toFixed(2).padStart(5, "0")}" ${dir}`;
+  const bearingStr = `${q} ${String(d).padStart(2, "0")}°${String(mi).padStart(2, "0")}'${s % 1 === 0 ? String(Math.round(s)).padStart(2, "0") : s.toFixed(2).padStart(5, "0")}" ${dir}`;
 
   return {
     quad: q,

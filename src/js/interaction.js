@@ -2,10 +2,15 @@
 function setupInteraction() {
   const container = $("canvasContainer");
   let dragStartPos = null; // track initial mouse pos for drag threshold
+  let annoMouseDownIdx = -1; // track if mousedown was on an annotation
+  let annoHasDragged = false;
   container.addEventListener("mousedown", (e) => {
     const rect = canvas.getBoundingClientRect(),
       sx = e.clientX - rect.left,
       sy = e.clientY - rect.top;
+
+    // Dismiss delete CTA on any mousedown
+    hideAnnoDeleteCta();
 
     // Handle shape drawing mode
     if (currentDrawMode) {
@@ -14,6 +19,21 @@ function setupInteraction() {
       e.preventDefault();
       return;
     }
+
+    // Check annotations first (highest priority for click interaction)
+    const annoIdx = hitTestAnno(sx, sy);
+    if (annoIdx >= 0) {
+      annoMouseDownIdx = annoIdx;
+      annoHasDragged = false;
+      dragStartPos = { x: sx, y: sy };
+      const a = annotations[annoIdx];
+      const s = w2s(a.wx, a.wy);
+      dragTarget = { type: "anno", idx: annoIdx };
+      dragOffset = { x: sx - s.x, y: sy - s.y };
+      e.preventDefault();
+      return;
+    }
+    annoMouseDownIdx = -1;
 
     const hit = hitTest(sx, sy);
     if (hit) {
@@ -65,7 +85,13 @@ function setupInteraction() {
     // Handle shape drawing preview
     if (currentDrawMode && drawStart) {
       redraw();
-      drawShape(currentDrawMode, drawStart, { x: sx, y: sy }, $("shapeColor").value || "#000000", parseInt($("shapeWidth").value) || 2);
+      drawShape(
+        currentDrawMode,
+        drawStart,
+        { x: sx, y: sy },
+        $("shapeColor").value || "#000000",
+        parseInt($("shapeWidth").value) || 2,
+      );
       return;
     }
 
@@ -76,18 +102,25 @@ function setupInteraction() {
           dy = sy - dragStartPos.y;
         if (Math.sqrt(dx * dx + dy * dy) < 3) return; // below threshold, don't move yet
         dragStartPos = null; // threshold exceeded, allow drag from now on
+        if (dragTarget.type === "anno") annoHasDragged = true;
       }
       const tx = sx - dragOffset.x,
         ty = sy - dragOffset.y;
       if (dragTarget.type === "legend") {
         // Legend position is now stored as top-left corner in screen coords
         legendPos = { sx: tx, sy: ty };
+      } else if (dragTarget.type === "anno") {
+        container.style.cursor = "move";
+        const wc = s2w(tx, ty);
+        annotations[dragTarget.idx].wx = wc.x;
+        annotations[dragTarget.idx].wy = wc.y;
       } else {
         const wc = s2w(tx, ty);
         if (dragTarget.type === "label") {
-          tracts[dragTarget.tractIdx].calls[
-            dragTarget.callIdx
-          ].labelOffset = { wx: wc.x, wy: wc.y };
+          tracts[dragTarget.tractIdx].calls[dragTarget.callIdx].labelOffset = {
+            wx: wc.x,
+            wy: wc.y,
+          };
         } else if (dragTarget.type === "tname") {
           tracts[dragTarget.tractIdx].nameOffset = { wx: wc.x, wy: wc.y };
         } else if (dragTarget.type === "tpid") {
@@ -154,17 +187,31 @@ function setupInteraction() {
       return;
     }
 
+    // Annotation drag cleanup (delete is now on right-click)
+    annoMouseDownIdx = -1;
+    annoHasDragged = false;
+
     isDragging = false;
     dragTarget = null;
     dragStartPos = null;
     $("canvasContainer").style.cursor = "grab";
   });
 
-  // Right-click on canvas shapes for editing
+  // Right-click on canvas — annotations and shapes
   container.addEventListener("contextmenu", (e) => {
     const rect = canvas.getBoundingClientRect(),
       sx = e.clientX - rect.left,
       sy = e.clientY - rect.top;
+
+    // Check annotations first
+    const annoIdx = hitTestAnno(sx, sy);
+    if (annoIdx >= 0) {
+      e.preventDefault();
+      annoDeleteTargetIdx = annoIdx;
+      showAnnoDeleteCta(annotations[annoIdx]);
+      return;
+    }
+
     const hit = hitTest(sx, sy);
     if (hit && hit.type === "shape") {
       e.preventDefault();
@@ -181,7 +228,8 @@ function setupInteraction() {
         padding: 4px 0;
       `;
       if (hit.type === "shape") {
-        const ti = hit.tractIdx, si = hit.shapeIdx;
+        const ti = hit.tractIdx,
+          si = hit.shapeIdx;
         const currentColor = tracts[ti].shapes[si].color || "#000000";
         const currentWidth = tracts[ti].shapes[si].width || 2;
         menu.innerHTML = `
@@ -190,11 +238,11 @@ function setupInteraction() {
             <input type="color" value="${currentColor}" style="width:22px;height:18px;border:1px solid var(--dp-border-lt);border-radius:2px;padding:0;cursor:pointer" onchange="event.stopPropagation();saveUndo();tracts[${ti}].shapes[${si}].color=this.value;redraw()">
             <label style="font-size:9px;color:var(--dp-text2)">Width</label>
             <select style="width:40px;font-size:9px;background:var(--dp-field);color:var(--dp-text);border:1px solid var(--dp-border-lt);border-radius:2px;padding:1px;cursor:pointer" onchange="event.stopPropagation();saveUndo();tracts[${ti}].shapes[${si}].width=parseInt(this.value);redraw()">
-              <option value="1" ${currentWidth===1?'selected':''}>1px</option>
-              <option value="2" ${currentWidth===2?'selected':''}>2px</option>
-              <option value="3" ${currentWidth===3?'selected':''}>3px</option>
-              <option value="4" ${currentWidth===4?'selected':''}>4px</option>
-              <option value="5" ${currentWidth===5?'selected':''}>5px</option>
+              <option value="1" ${currentWidth === 1 ? "selected" : ""}>1px</option>
+              <option value="2" ${currentWidth === 2 ? "selected" : ""}>2px</option>
+              <option value="3" ${currentWidth === 3 ? "selected" : ""}>3px</option>
+              <option value="4" ${currentWidth === 4 ? "selected" : ""}>4px</option>
+              <option value="5" ${currentWidth === 5 ? "selected" : ""}>5px</option>
             </select>
           </div>
           <div style="padding:6px 12px;cursor:pointer;color:#ef4444;font-size:11px" onmousedown="event.stopPropagation();saveUndo();tracts[${ti}].shapes.splice(${si},1);redraw();document.body.removeChild(this.closest('.ctx-menu'))">
@@ -240,16 +288,13 @@ function setupInteraction() {
       if (
         !e.shiftKey &&
         hit &&
-        (hit.type === "label" ||
-          hit.type === "tname" ||
-          hit.type === "tpid")
+        (hit.type === "label" || hit.type === "tname" || hit.type === "tpid")
       ) {
         saveUndo();
         const d = e.deltaY > 0 ? -3 : 3;
         if (hit.type === "label")
           tracts[hit.tractIdx].calls[hit.callIdx].labelRotation =
-            (tracts[hit.tractIdx].calls[hit.callIdx].labelRotation || 0) +
-            d;
+            (tracts[hit.tractIdx].calls[hit.callIdx].labelRotation || 0) + d;
         else if (hit.type === "tname")
           tracts[hit.tractIdx].nameRotation =
             (tracts[hit.tractIdx].nameRotation || 0) + d;
@@ -313,4 +358,3 @@ function setupInteraction() {
     }
   });
 }
-

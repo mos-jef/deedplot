@@ -1,0 +1,90 @@
+/* ═══ DROP SHADOW MODAL ═══ */
+.ds-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: none;
+  z-index: 200;
+}
+.ds-overlay.show { display: block; }
+
+.ds-modal {
+  width: 420px;
+  background: #2C2C2C;
+  border-radius: 20px;
+  border: 1px solid #000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: absolute;
+}
+.ds-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  cursor: grab;
+  user-select: none;
+}
+.ds-modal-header:active { cursor: grabbing; }
+.ds-modal-header .spacer { width: 26px; }
+.ds-modal-header .title {
+  font-size: 22px; font-weight: 800; color: #EBE3D4;
+}
+.ds-close-btn {
+  width: 26px; height: 26px;
+  background: none; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.ds-close-btn svg { stroke: #E8BF1B; }
+.ds-modal-divider { height: 2px; background: #E8BF1B; margin: 0 8px; }
+
+.ds-modal-body {
+  padding: 14px 18px 20px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+
+.ds-slider-group {
+  display: flex; flex-direction: column; gap: 3px;
+}
+.ds-slider-label {
+  font-size: 13px; color: #f4e2e2; font-weight: 400;
+}
+.ds-slider-row {
+  display: flex; align-items: center; gap: 10px;
+}
+.ds-slider-row input[type="range"] {
+  flex: 1; height: 8px;
+  -webkit-appearance: none; appearance: none;
+  background: linear-gradient(90deg, #E8BF1B var(--pct, 50%), #8b8585 var(--pct, 50%));
+  border-radius: 20px; border: 1px solid #1e1e1e;
+  outline: none; cursor: pointer;
+}
+.ds-slider-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 18px; height: 18px;
+  background: #e86d15; border-radius: 50%;
+  border: 0.5px solid #000; cursor: pointer;
+}
+.ds-slider-row input[type="range"]::-moz-range-thumb {
+  width: 18px; height: 18px;
+  background: #e86d15; border-radius: 50%;
+  border: 0.5px solid #000; cursor: pointer;
+}
+.ds-slider-val {
+  font-size: 13px; color: #EBE3D4;
+  background: #383838; border-radius: 4px;
+  padding: 2px 6px; text-align: center;
+  border: 1px solid transparent;
+  outline: none; font-family: inherit; width: 56px;
+}
+.ds-slider-val:focus {
+  border-color: #E8BF1B; background: #2C2C2C;
+}
+
+.ds-remove-btn {
+  background: #E8BF1B; color: #1a1a0a;
+  border: none; border-radius: 6px;
+  padding: 5px 18px; font-size: 13px;
+  font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.ds-remove-btn:hover { filter: brightness(1.1); }

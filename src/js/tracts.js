@@ -141,6 +141,7 @@ function clearTracts() {
   saveUndo();
   tracts = [];
   activeTractIdx = -1;
+  annotations = [];
   legendPos = { sx: null, sy: null };
   updateTractList();
   updateCallSchedule();
@@ -162,13 +163,11 @@ function syncLegalBox() {
   if (activeTractIdx < 0) return;
   const t = tracts[activeTractIdx];
   if (!t || !t.calls.length) return;
-  // Build a readable call list for the legal description box
   const lines = t.calls.map((c, idx) => {
-    const prefix = `(${idx + 1}) `;
     if (c.isCurve) {
-      return `${prefix}Curve ${c.curveDir === "L" ? "Left" : "Right"}, R=${c.radius.toFixed(2)}', Δ=${c.delta.toFixed(4)}°, Chord: ${c.quad} ${c.deg}°${String(c.min).padStart(2, "0")}'${c.sec.toFixed(2)}" ${c.dir}, ${c.dist.toFixed(2)}'`;
+      return `thence Curve ${c.curveDir === "L" ? "Left" : "Right"}, R=${c.radius.toFixed(2)}', Δ=${c.delta.toFixed(4)}°, Chord: ${c.quad} ${c.deg}°${String(c.min).padStart(2, "0")}'${c.sec % 1 === 0 ? String(Math.round(c.sec)).padStart(2, "0") : c.sec.toFixed(2)}" ${c.dir}, ${c.dist.toFixed(2)}'`;
     }
-    return `${prefix}${c.bearingStr}  ${c.dist.toFixed(2)}'`;
+    return `thence ${c.bearingStr}  ${c.dist.toFixed(2)}'`;
   });
   $("deedInput").value = lines.join("\n");
 }
@@ -281,9 +280,9 @@ function updateProps() {
   $("propHatch").checked = t.hatching;
   $("propLegendTextColor").value = t.legendTextColor || "#000000";
 
-  // Update drop shadow popover if visible
-  if ($("dropShadowPopover").classList.contains("show")) {
-    updateDropShadowValues();
+  // Update drop shadow modal if visible
+  if ($("dsOverlay") && $("dsOverlay").classList.contains("show")) {
+    syncDsModal();
   }
 }
 

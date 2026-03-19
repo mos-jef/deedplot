@@ -314,12 +314,6 @@
             />
             Drop shadow
           </label>
-          <div class="br" style="margin-top: 6px">
-            <button class="btn sm" onclick="exportPNG(false)">
-              Export PNG
-            </button>
-            <button class="btn sm" onclick="exportMABF()">Export MABF</button>
-          </div>
         </div>
       </div>
 
@@ -335,6 +329,13 @@
             ⛶
           </button>
           <div class="ftb-sep"></div>
+          <button
+            class="ftb-b"
+            onclick="openAnnoModal()"
+            title="Add annotation"
+          >
+            T
+          </button>
           <button
             class="ftb-b"
             onclick="toggleDrawMode('rect')"
@@ -476,190 +477,10 @@
         </div>
 
 
-        <!-- BG Image popover -->
-        <div class="popover" id="bgPopover">
-          <div class="sec-t">Background image</div>
-          <div class="ir">
-            <label>Opacity</label
-            ><input
-              type="range"
-              id="bgAlpha"
-              min="0"
-              max="100"
-              value="40"
-              oninput="
-                bgS.alpha = this.value / 100;
-                redraw();
-              "
-            />
-          </div>
-          <div class="ir">
-            <label>Scale</label
-            ><input
-              type="range"
-              id="bgScale"
-              min="1"
-              max="2000"
-              value="100"
-              oninput="
-                bgS.scale = this.value / 100;
-                redraw();
-              "
-            /><span
-              id="bgScaleV"
-              style="font-size: 8px; color: var(--dp-text3); min-width: 28px"
-              >100%</span
-            >
-          </div>
-          <div class="ir">
-            <label>Rot</label
-            ><input
-              type="range"
-              id="bgRot"
-              min="-180"
-              max="180"
-              value="0"
-              oninput="
-                bgS.rotation = +this.value;
-                redraw();
-              "
-            /><span
-              id="bgRotV"
-              style="font-size: 8px; color: var(--dp-text3); min-width: 20px"
-              >0°</span
-            >
-          </div>
-          <div class="ir">
-            <label>Fine</label
-            ><input
-              type="range"
-              id="bgRotFine"
-              min="-50"
-              max="50"
-              value="0"
-              step="1"
-              oninput="
-                bgS.rotFine = this.value / 10;
-                redraw();
-              "
-            /><span
-              id="bgRotFineV"
-              style="font-size: 8px; color: var(--dp-text3); min-width: 24px"
-              >0.0°</span
-            >
-          </div>
-          <label class="ck" style="margin-top: 3px"
-            ><input
-              type="checkbox"
-              id="bgShow"
-              checked
-              onchange="
-                bgS.show = this.checked;
-                redraw();
-              "
-            />
-            Show</label
-          >
-          <button
-            class="btn sm"
-            onclick="$('bgInput').click(); $('bgPopover').classList.remove('show')"
-            style="margin-top: 3px; width: 100%"
-          >
-            Change Image
-          </button>
-          <button
-            class="btn sm danger"
-            onclick="clearBgImage(); $('bgPopover').classList.remove('show')"
-            style="margin-top: 3px; width: 100%"
-          >
-            Remove
-          </button>
-        </div>
+        <!-- Hidden checkbox for bgShow state (used by image modal) -->
+        <input type="checkbox" id="bgShow" checked style="display:none"
+          onchange="bgS.show=this.checked;redraw();">
 
-        <!-- Drop shadow popover for Effects -->
-        <div class="popover" id="dropShadowPopover">
-          <div class="sec-t">Drop shadow <span class="sec-plus" onclick="$('dropShadowPopover').classList.remove('show')" title="Close" style="cursor:pointer;font-size:14px;font-weight:700">&times;</span></div>
-          <div class="ir">
-            <label>X</label
-            ><input
-              type="number"
-              class="inp"
-              id="shadowX"
-              min="-20"
-              max="20"
-              value="2"
-              style="width:50px"
-              oninput="
-                updateDropShadow();
-                redraw();
-              "
-            />
-          </div>
-          <div class="ir">
-            <label>Y</label
-            ><input
-              type="number"
-              class="inp"
-              id="shadowY"
-              min="-20"
-              max="20"
-              value="2"
-              style="width:50px"
-              oninput="
-                updateDropShadow();
-                redraw();
-              "
-            />
-          </div>
-          <div class="ir">
-            <label>Blur</label
-            ><input
-              type="number"
-              class="inp"
-              id="shadowBlur"
-              min="0"
-              max="20"
-              value="4"
-              style="width:50px"
-              oninput="
-                updateDropShadow();
-                redraw();
-              "
-            />
-          </div>
-          <div class="ir">
-            <label>Color</label
-            ><input
-              type="color"
-              id="shadowColor"
-              value="#000000"
-              oninput="
-                updateDropShadow();
-                redraw();
-              "
-            /><label>Op</label
-            ><input
-              type="number"
-              class="inp"
-              id="shadowAlpha"
-              min="0"
-              max="100"
-              value="30"
-              style="width:50px"
-              oninput="
-                updateDropShadow();
-                redraw();
-              "
-            />
-          </div>
-          <button
-            class="btn sm danger"
-            onclick="removeDropShadow()"
-            style="margin-top: 6px; width: 100%"
-          >
-            Remove shadow
-          </button>
-        </div>
       </div>
 
       <!-- RIGHT PANEL (context-sensitive) -->
@@ -994,12 +815,31 @@
           <div class="sec">
             <div class="sec-label">Effects</div>
             <button
-              class="btn sm"
-              onclick="toggleDropShadowPopover()"
-              style="width: 100%; margin-top: 2px"
+              onclick="openDsModal()"
+              style="width:100%;margin-top:2px;padding:5px 0;border-radius:6px;border:none;background:#E8BF1B;color:#1a1a0a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;"
             >
-              Drop shadow...
+              Drop Shadow
             </button>
+          </div>
+          <div class="sec">
+            <div class="sec-label">Annotations</div>
+            <button
+              onclick="openAnnoModal()"
+              style="width:100%;margin-top:2px;padding:5px 0;border-radius:6px;border:none;background:#E8BF1B;color:#1a1a0a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;"
+            >
+              Add Note
+            </button>
+          </div>
+          <div class="sec">
+            <div class="sec-label">Image</div>
+            <button
+              id="imgSettingsBtn"
+              onclick="openImageModal()"
+              style="width:100%;margin-top:2px;padding:5px 0;border-radius:6px;border:none;background:#E8BF1B;color:#1a1a0a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;display:none;"
+            >
+              Image Settings
+            </button>
+            <div id="imgSettingsHint" style="font-size:9px;color:var(--dp-text3);margin-top:2px;">Load an image first</div>
           </div>
           <div
             class="br"
@@ -1010,10 +850,18 @@
               margin-bottom: 10px;
             "
           >
-            <button class="btn sm" onclick="exportPNG(false)">
+            <button
+              onclick="exportPNG(false)"
+              style="flex:1;padding:5px 0;border-radius:6px;border:1px solid #b1782d;background:#ecbd65;color:#1a1a0a;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;"
+            >
               Export PNG
             </button>
-            <button class="btn sm" onclick="exportMABF()">Export MABF</button>
+            <button
+              onclick="exportMABF()"
+              style="flex:1;padding:5px 0;border-radius:6px;border:1px solid #b1782d;background:#ecbd65;color:#1a1a0a;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;"
+            >
+              Export MABF
+            </button>
           </div>
           <div class="sec">
             <div class="sec-label">Call schedule</div>

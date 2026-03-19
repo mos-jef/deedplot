@@ -11,6 +11,9 @@ OUT="index.html"
 JS_FILES=(
   "src/js/state.js"
   "src/js/helpers.js"
+  "src/js/annotations.js"
+  "src/js/dropshadow-modal.js"
+  "src/js/image-modal.js"
   "src/js/math.js"
   "src/js/tracts.js"
   "src/js/bgimage.js"
@@ -34,11 +37,17 @@ cat > "$OUT" <<'HEADER'
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DeedPlot — Metes &amp; Bounds Parcel Plotter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;400;600;700;900&family=JetBrains+Mono:wght@400;700&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Oswald:wght@400;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Raleway:wght@100;400;600;700;900&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=Nunito:wght@400;600;700;900&family=PT+Serif:ital,wght@0,400;0,700;1,400&family=Fira+Code:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Roboto+Slab:wght@100;400;700;900&display=swap" rel="stylesheet">
     <style>
 HEADER
 
 # CSS
 cat src/css/deedplot.css >> "$OUT"
+cat src/css/annotations.css >> "$OUT"
+cat src/css/dropshadow-modal.css >> "$OUT"
+cat src/css/image-modal.css >> "$OUT"
 
 # Close style, open body
 cat >> "$OUT" <<'MID'

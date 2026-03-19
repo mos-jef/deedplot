@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DeedPlot — Metes &amp; Bounds Parcel Plotter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;400;600;700;900&family=JetBrains+Mono:wght@400;700&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Oswald:wght@400;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Raleway:wght@100;400;600;700;900&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=Nunito:wght@400;600;700;900&family=PT+Serif:ital,wght@0,400;0,700;1,400&family=Fira+Code:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Roboto+Slab:wght@100;400;700;900&display=swap" rel="stylesheet">
     <style>
       :root {
         --dp-bg: #2c2c2c;
@@ -586,6 +589,393 @@
       .hidden {
         display: none !important;
       }
+/* ═══ ANNOTATION MODAL ═══ */
+.anno-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.anno-overlay.show { display: flex; }
+
+.anno-modal {
+  width: 380px;
+  max-height: 90vh;
+  background: #2C2C2C;
+  border-radius: 20px;
+  border: 1px solid #000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif;
+}
+.anno-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  flex-shrink: 0;
+}
+.anno-modal-header .spacer { width: 26px; }
+.anno-modal-header .title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #EBE3D4;
+}
+.anno-close-btn {
+  width: 26px; height: 26px;
+  background: none; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.anno-close-btn svg { stroke: #E8BF1B; }
+.anno-modal-divider { height: 1px; background: #E8BF1B; flex-shrink: 0; }
+
+.anno-modal-body {
+  padding: 12px 16px 16px;
+  display: flex; flex-direction: column; gap: 8px;
+  overflow-y: auto;
+}
+
+.anno-textarea {
+  background: #EBE3D4;
+  border-radius: 8px; border: 1px solid #000;
+  padding: 12px; min-height: 160px;
+  color: #000; font-size: 18px;
+  outline: none; resize: none; width: 100%;
+  line-height: 1.4; font-family: 'Inter', sans-serif;
+}
+
+.anno-control-row { display: flex; justify-content: space-between; align-items: flex-end; }
+
+.anno-color-group label {
+  display: block; font-size: 11px; color: #EBE3D4;
+  margin-bottom: 2px; margin-left: 4px;
+}
+.anno-color-control { display: flex; gap: 2px; position: relative; }
+.anno-swatch-area {
+  display: flex; align-items: center;
+  background: #383838; border-radius: 4px 0 0 4px;
+  padding: 3px 8px 3px 6px; gap: 5px;
+  cursor: pointer; position: relative;
+}
+.anno-swatch-area:hover { background: #444; }
+.anno-color-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 1px solid #555; flex-shrink: 0;
+}
+.anno-color-hex {
+  font-size: 12px; font-family: 'SF Mono', Menlo, monospace; color: #EBE3D4;
+}
+.anno-swatch-area input[type="color"] {
+  position: absolute; inset: 0; opacity: 0;
+  width: 100%; height: 100%; cursor: pointer; border: none;
+}
+.anno-opacity-btn {
+  background: #383838; border-radius: 0 4px 4px 0;
+  padding: 3px 6px; border: none; cursor: pointer;
+  color: #EBE3D4; font-size: 12px; font-family: inherit;
+}
+.anno-opacity-btn:hover { background: #444; }
+.anno-opacity-popup {
+  position: absolute; top: calc(100% + 4px); left: 0;
+  background: #333; border: 1px solid #555; border-radius: 6px;
+  padding: 8px 10px; z-index: 210; display: none; width: 140px;
+}
+.anno-opacity-popup.show { display: flex; align-items: center; gap: 6px; }
+.anno-opacity-popup input[type="range"] { flex: 1; accent-color: #E8BF1B; height: 3px; }
+.anno-opacity-popup span { font-size: 11px; color: #EBE3D4; min-width: 30px; text-align: right; }
+
+.anno-post-btn {
+  border: 2px solid #E8BF1B; border-radius: 16px;
+  padding: 4px 18px; background: none; cursor: pointer;
+  color: #E8BF1B; font-size: 16px; font-weight: 700;
+  font-family: inherit; transition: background 0.15s;
+}
+.anno-post-btn:hover { background: rgba(232,191,27,0.12); }
+
+.anno-bg-row { display: flex; align-items: flex-end; gap: 8px; }
+.anno-bg-toggle {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; color: #EBE3D4; cursor: pointer; margin-bottom: 2px;
+}
+.anno-bg-toggle input { width: 12px; height: 12px; accent-color: #E8BF1B; }
+
+.anno-dropdown-wrap { position: relative; }
+.anno-dropdown-btn {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; background: transparent;
+  border: 1px solid #EBE3D4; border-radius: 5px;
+  padding: 6px 10px; cursor: pointer;
+  color: #EBE3D4; font-family: inherit; font-size: 15px; text-align: left;
+}
+.anno-dropdown-btn:hover { background: rgba(235,227,212,0.06); }
+.anno-dropdown-btn.open { border-color: #E8BF1B; }
+.anno-dropdown-btn svg { flex-shrink: 0; transition: transform 0.15s; }
+.anno-dropdown-btn.open svg { transform: rotate(180deg); }
+
+.anno-dropdown-menu {
+  position: absolute; left: 0; right: 0;
+  background: #333; border: 1px solid #555; border-radius: 6px;
+  padding: 4px 0; z-index: 210; display: none;
+  max-height: 220px; overflow-y: auto;
+}
+.anno-dropdown-menu.above { bottom: calc(100% + 4px); }
+.anno-dropdown-menu.show { display: block; }
+.anno-dropdown-menu::-webkit-scrollbar { width: 4px; }
+.anno-dropdown-menu::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
+.anno-dropdown-item {
+  padding: 6px 14px; font-size: 14px; color: #EBE3D4;
+  cursor: pointer; white-space: nowrap;
+}
+.anno-dropdown-item:hover { background: rgba(232,191,27,0.15); }
+.anno-dropdown-sep { height: 1px; background: #555; margin: 4px 10px; }
+
+.anno-font-row { display: flex; gap: 6px; }
+.anno-font-row .anno-dropdown-wrap:first-child { flex: 1; }
+.anno-font-row .anno-dropdown-wrap:last-child { width: 75px; }
+.anno-font-row .anno-dropdown-btn { font-size: 13px; padding: 5px 8px; }
+
+/* ═══ DELETE CTA ═══ */
+.anno-delete-cta {
+  position: absolute;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  background: #333;
+  border: 1px solid #555;
+  border-radius: 20px;
+  padding: 5px 12px 5px 6px;
+  z-index: 60;
+  cursor: pointer;
+  white-space: nowrap;
+  transform: translate(-50%, -100%);
+  margin-top: -8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+.anno-delete-cta.show { display: flex; }
+.anno-delete-cta:hover { background: #3a3a3a; }
+.anno-delete-cta .x-icon {
+  width: 20px; height: 20px;
+  background: #E8BF1B;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.anno-delete-cta .x-icon svg { stroke: #1a1a0a; }
+.anno-delete-cta span {
+  font-size: 14px; font-weight: 600; color: #EBE3D4;
+}
+/* ═══ DROP SHADOW MODAL ═══ */
+.ds-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: none;
+  z-index: 200;
+}
+.ds-overlay.show { display: block; }
+
+.ds-modal {
+  width: 420px;
+  background: #2C2C2C;
+  border-radius: 20px;
+  border: 1px solid #000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: absolute;
+}
+.ds-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  cursor: grab;
+  user-select: none;
+}
+.ds-modal-header:active { cursor: grabbing; }
+.ds-modal-header .spacer { width: 26px; }
+.ds-modal-header .title {
+  font-size: 22px; font-weight: 800; color: #EBE3D4;
+}
+.ds-close-btn {
+  width: 26px; height: 26px;
+  background: none; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.ds-close-btn svg { stroke: #E8BF1B; }
+.ds-modal-divider { height: 2px; background: #E8BF1B; margin: 0 8px; }
+
+.ds-modal-body {
+  padding: 14px 18px 20px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+
+.ds-slider-group {
+  display: flex; flex-direction: column; gap: 3px;
+}
+.ds-slider-label {
+  font-size: 13px; color: #f4e2e2; font-weight: 400;
+}
+.ds-slider-row {
+  display: flex; align-items: center; gap: 10px;
+}
+.ds-slider-row input[type="range"] {
+  flex: 1; height: 8px;
+  -webkit-appearance: none; appearance: none;
+  background: linear-gradient(90deg, #E8BF1B var(--pct, 50%), #8b8585 var(--pct, 50%));
+  border-radius: 20px; border: 1px solid #1e1e1e;
+  outline: none; cursor: pointer;
+}
+.ds-slider-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 18px; height: 18px;
+  background: #e86d15; border-radius: 50%;
+  border: 0.5px solid #000; cursor: pointer;
+}
+.ds-slider-row input[type="range"]::-moz-range-thumb {
+  width: 18px; height: 18px;
+  background: #e86d15; border-radius: 50%;
+  border: 0.5px solid #000; cursor: pointer;
+}
+.ds-slider-val {
+  font-size: 13px; color: #EBE3D4;
+  background: #383838; border-radius: 4px;
+  padding: 2px 6px; text-align: center;
+  border: 1px solid transparent;
+  outline: none; font-family: inherit; width: 56px;
+}
+.ds-slider-val:focus {
+  border-color: #E8BF1B; background: #2C2C2C;
+}
+
+.ds-remove-btn {
+  background: #E8BF1B; color: #1a1a0a;
+  border: none; border-radius: 6px;
+  padding: 5px 18px; font-size: 13px;
+  font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.ds-remove-btn:hover { filter: brightness(1.1); }
+/* ═══ IMAGE MODAL ═══ */
+.img-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: none;
+  z-index: 200;
+}
+.img-overlay.show { display: block; }
+
+.img-modal {
+  width: 420px;
+  background: #2C2C2C;
+  border-radius: 20px;
+  border: 1px solid #000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: absolute;
+}
+.img-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  cursor: grab;
+  user-select: none;
+}
+.img-modal-header:active { cursor: grabbing; }
+.img-modal-header .spacer { width: 26px; }
+.img-modal-header .title {
+  font-size: 22px; font-weight: 800; color: #EBE3D4;
+}
+.img-close-btn {
+  width: 26px; height: 26px;
+  background: none; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.img-close-btn svg { stroke: #E8BF1B; }
+.img-modal-divider { height: 2px; background: #E8BF1B; margin: 0 8px; }
+
+.img-modal-body {
+  padding: 14px 18px 20px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+.img-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.img-row-label {
+  font-size: 13px; color: #EBE3D4; font-weight: 400; min-width: 30px;
+}
+.img-thumb {
+  width: 18px; height: 18px;
+  background: #d9d9d9; border: 0.5px solid #000;
+  flex-shrink: 0; background-size: cover; background-position: center;
+}
+.img-thumb.has-img { border-color: #E8BF1B; }
+.img-name {
+  font-size: 13px; color: #EBE3D4;
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.img-opacity-val {
+  font-size: 13px; color: #EBE3D4;
+  background: #383838; border-radius: 4px;
+  padding: 2px 6px; min-width: 40px; text-align: center;
+  border: 1px solid transparent;
+  outline: none; font-family: inherit; width: 52px;
+}
+.img-opacity-val:focus {
+  border-color: #E8BF1B; background: #2C2C2C;
+}
+
+.img-icon-btn {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: 1px solid #EBE3D4;
+  background: none;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.12s;
+}
+.img-icon-btn:hover { background: rgba(235,227,212,0.1); }
+.img-icon-btn svg { stroke: #fff; fill: none; }
+.img-icon-btn.eye-btn.off { opacity: 0.4; }
+
+.img-slider-group { display: flex; flex-direction: column; gap: 3px; }
+.img-slider-label { font-size: 13px; color: #f4e2e2; font-weight: 400; }
+.img-slider-row { display: flex; align-items: center; gap: 10px; }
+.img-slider-row input[type="range"] {
+  flex: 1; height: 8px;
+  -webkit-appearance: none; appearance: none;
+  background: linear-gradient(90deg, #E8BF1B var(--pct, 50%), #8b8585 var(--pct, 50%));
+  border-radius: 20px; border: 1px solid #1e1e1e;
+  outline: none; cursor: pointer;
+}
+.img-slider-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 18px; height: 18px;
+  background: #e86d15; border-radius: 50%;
+  border: 0.5px solid #000; cursor: pointer;
+}
+.img-slider-row input[type="range"]::-moz-range-thumb {
+  width: 18px; height: 18px;
+  background: #e86d15; border-radius: 50%;
+  border: 0.5px solid #000; cursor: pointer;
+}
+.img-slider-val {
+  font-size: 13px; color: #EBE3D4;
+  background: #383838; border-radius: 4px;
+  padding: 2px 6px; text-align: center;
+  border: 1px solid transparent;
+  outline: none; font-family: inherit; width: 72px;
+}
+.img-slider-val:focus {
+  border-color: #E8BF1B; background: #2C2C2C;
+}
+.img-hidden-input { display: none; }
     </style>
   </head>
   <body>
@@ -904,12 +1294,6 @@
             />
             Drop shadow
           </label>
-          <div class="br" style="margin-top: 6px">
-            <button class="btn sm" onclick="exportPNG(false)">
-              Export PNG
-            </button>
-            <button class="btn sm" onclick="exportMABF()">Export MABF</button>
-          </div>
         </div>
       </div>
 
@@ -925,6 +1309,13 @@
             ⛶
           </button>
           <div class="ftb-sep"></div>
+          <button
+            class="ftb-b"
+            onclick="openAnnoModal()"
+            title="Add annotation"
+          >
+            T
+          </button>
           <button
             class="ftb-b"
             onclick="toggleDrawMode('rect')"
@@ -1066,190 +1457,10 @@
         </div>
 
 
-        <!-- BG Image popover -->
-        <div class="popover" id="bgPopover">
-          <div class="sec-t">Background image</div>
-          <div class="ir">
-            <label>Opacity</label
-            ><input
-              type="range"
-              id="bgAlpha"
-              min="0"
-              max="100"
-              value="40"
-              oninput="
-                bgS.alpha = this.value / 100;
-                redraw();
-              "
-            />
-          </div>
-          <div class="ir">
-            <label>Scale</label
-            ><input
-              type="range"
-              id="bgScale"
-              min="1"
-              max="2000"
-              value="100"
-              oninput="
-                bgS.scale = this.value / 100;
-                redraw();
-              "
-            /><span
-              id="bgScaleV"
-              style="font-size: 8px; color: var(--dp-text3); min-width: 28px"
-              >100%</span
-            >
-          </div>
-          <div class="ir">
-            <label>Rot</label
-            ><input
-              type="range"
-              id="bgRot"
-              min="-180"
-              max="180"
-              value="0"
-              oninput="
-                bgS.rotation = +this.value;
-                redraw();
-              "
-            /><span
-              id="bgRotV"
-              style="font-size: 8px; color: var(--dp-text3); min-width: 20px"
-              >0°</span
-            >
-          </div>
-          <div class="ir">
-            <label>Fine</label
-            ><input
-              type="range"
-              id="bgRotFine"
-              min="-50"
-              max="50"
-              value="0"
-              step="1"
-              oninput="
-                bgS.rotFine = this.value / 10;
-                redraw();
-              "
-            /><span
-              id="bgRotFineV"
-              style="font-size: 8px; color: var(--dp-text3); min-width: 24px"
-              >0.0°</span
-            >
-          </div>
-          <label class="ck" style="margin-top: 3px"
-            ><input
-              type="checkbox"
-              id="bgShow"
-              checked
-              onchange="
-                bgS.show = this.checked;
-                redraw();
-              "
-            />
-            Show</label
-          >
-          <button
-            class="btn sm"
-            onclick="$('bgInput').click(); $('bgPopover').classList.remove('show')"
-            style="margin-top: 3px; width: 100%"
-          >
-            Change Image
-          </button>
-          <button
-            class="btn sm danger"
-            onclick="clearBgImage(); $('bgPopover').classList.remove('show')"
-            style="margin-top: 3px; width: 100%"
-          >
-            Remove
-          </button>
-        </div>
+        <!-- Hidden checkbox for bgShow state (used by image modal) -->
+        <input type="checkbox" id="bgShow" checked style="display:none"
+          onchange="bgS.show=this.checked;redraw();">
 
-        <!-- Drop shadow popover for Effects -->
-        <div class="popover" id="dropShadowPopover">
-          <div class="sec-t">Drop shadow <span class="sec-plus" onclick="$('dropShadowPopover').classList.remove('show')" title="Close" style="cursor:pointer;font-size:14px;font-weight:700">&times;</span></div>
-          <div class="ir">
-            <label>X</label
-            ><input
-              type="number"
-              class="inp"
-              id="shadowX"
-              min="-20"
-              max="20"
-              value="2"
-              style="width:50px"
-              oninput="
-                updateDropShadow();
-                redraw();
-              "
-            />
-          </div>
-          <div class="ir">
-            <label>Y</label
-            ><input
-              type="number"
-              class="inp"
-              id="shadowY"
-              min="-20"
-              max="20"
-              value="2"
-              style="width:50px"
-              oninput="
-                updateDropShadow();
-                redraw();
-              "
-            />
-          </div>
-          <div class="ir">
-            <label>Blur</label
-            ><input
-              type="number"
-              class="inp"
-              id="shadowBlur"
-              min="0"
-              max="20"
-              value="4"
-              style="width:50px"
-              oninput="
-                updateDropShadow();
-                redraw();
-              "
-            />
-          </div>
-          <div class="ir">
-            <label>Color</label
-            ><input
-              type="color"
-              id="shadowColor"
-              value="#000000"
-              oninput="
-                updateDropShadow();
-                redraw();
-              "
-            /><label>Op</label
-            ><input
-              type="number"
-              class="inp"
-              id="shadowAlpha"
-              min="0"
-              max="100"
-              value="30"
-              style="width:50px"
-              oninput="
-                updateDropShadow();
-                redraw();
-              "
-            />
-          </div>
-          <button
-            class="btn sm danger"
-            onclick="removeDropShadow()"
-            style="margin-top: 6px; width: 100%"
-          >
-            Remove shadow
-          </button>
-        </div>
       </div>
 
       <!-- RIGHT PANEL (context-sensitive) -->
@@ -1584,12 +1795,31 @@
           <div class="sec">
             <div class="sec-label">Effects</div>
             <button
-              class="btn sm"
-              onclick="toggleDropShadowPopover()"
-              style="width: 100%; margin-top: 2px"
+              onclick="openDsModal()"
+              style="width:100%;margin-top:2px;padding:5px 0;border-radius:6px;border:none;background:#E8BF1B;color:#1a1a0a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;"
             >
-              Drop shadow...
+              Drop Shadow
             </button>
+          </div>
+          <div class="sec">
+            <div class="sec-label">Annotations</div>
+            <button
+              onclick="openAnnoModal()"
+              style="width:100%;margin-top:2px;padding:5px 0;border-radius:6px;border:none;background:#E8BF1B;color:#1a1a0a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;"
+            >
+              Add Note
+            </button>
+          </div>
+          <div class="sec">
+            <div class="sec-label">Image</div>
+            <button
+              id="imgSettingsBtn"
+              onclick="openImageModal()"
+              style="width:100%;margin-top:2px;padding:5px 0;border-radius:6px;border:none;background:#E8BF1B;color:#1a1a0a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;display:none;"
+            >
+              Image Settings
+            </button>
+            <div id="imgSettingsHint" style="font-size:9px;color:var(--dp-text3);margin-top:2px;">Load an image first</div>
           </div>
           <div
             class="br"
@@ -1600,10 +1830,18 @@
               margin-bottom: 10px;
             "
           >
-            <button class="btn sm" onclick="exportPNG(false)">
+            <button
+              onclick="exportPNG(false)"
+              style="flex:1;padding:5px 0;border-radius:6px;border:1px solid #b1782d;background:#ecbd65;color:#1a1a0a;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;"
+            >
               Export PNG
             </button>
-            <button class="btn sm" onclick="exportMABF()">Export MABF</button>
+            <button
+              onclick="exportMABF()"
+              style="flex:1;padding:5px 0;border-radius:6px;border:1px solid #b1782d;background:#ecbd65;color:#1a1a0a;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;"
+            >
+              Export MABF
+            </button>
           </div>
           <div class="sec">
             <div class="sec-label">Call schedule</div>
@@ -1679,6 +1917,7 @@
               typeof v === "function" ? undefined : v,
             ),
           ),
+          annotations: JSON.parse(JSON.stringify(annotations)),
           activeTractIdx,
           legendPos: { ...legendPos },
         };
@@ -1693,6 +1932,7 @@
         const s = undoStack.pop();
         activeTractIdx = s.activeTractIdx;
         legendPos = s.legendPos;
+        if (s.annotations) annotations = s.annotations;
         tracts = s.tracts.map((t) => {
           t.calls = t.calls.map((c) => {
             c.toRad = makeToRad(c.quad, c.deg, c.min, c.sec, c.dir);
@@ -1817,6 +2057,892 @@
         setTimeout(() => t.classList.remove("show"), 2000);
       }
       
+
+
+      // ── annotations ──
+      // ═══════════════ ANNOTATIONS ═══════════════
+      // State
+      let annotations = [];
+      let annoDeleteTargetIdx = -1;
+      
+      const ANNO_FONTS = [
+        { name: "Inter", family: "'Inter', sans-serif" },
+        { name: "Source Sans 3", family: "'Source Sans 3', sans-serif" },
+        { name: "Raleway", family: "'Raleway', sans-serif" },
+        { name: "Nunito", family: "'Nunito', sans-serif" },
+        { name: "Oswald", family: "'Oswald', sans-serif" },
+        { name: "Merriweather", family: "'Merriweather', serif" },
+        { name: "Playfair Display", family: "'Playfair Display', serif" },
+        { name: "Lora", family: "'Lora', serif" },
+        { name: "PT Serif", family: "'PT Serif', serif" },
+        { name: "Roboto Slab", family: "'Roboto Slab', serif" },
+        { name: "JetBrains Mono", family: "'JetBrains Mono', monospace" },
+        { name: "Fira Code", family: "'Fira Code', monospace" },
+      ];
+      const ANNO_WEIGHTS = [
+        { label: "Thin", value: 100, style: "normal" },
+        { label: "Regular", value: 400, style: "normal" },
+        { label: "Semi Bold", value: 600, style: "normal" },
+        { label: "Bold", value: 700, style: "normal" },
+        { label: "Black", value: 900, style: "normal" },
+        { label: "sep" },
+        { label: "Italic Thin", value: 100, style: "italic" },
+        { label: "Italic Regular", value: 400, style: "italic" },
+      ];
+      const ANNO_SIZES = [8, 12, 16, 20, 24, 32, 64];
+      
+      let annoModalState = {
+        fontFamily: ANNO_FONTS[0],
+        weight: ANNO_WEIGHTS[1],
+        size: 24,
+        textColor: "#000000",
+        textAlpha: 100,
+        bgColor: "#0f1117",
+        bgAlpha: 80,
+        bgEnabled: true,
+      };
+      
+      // ═══ INJECT MODAL HTML ═══
+      function initAnnotations() {
+        // Inject the delete CTA into the canvas container
+        const container = $("canvasContainer");
+        const deleteCta = document.createElement("div");
+        deleteCta.className = "anno-delete-cta";
+        deleteCta.id = "annoDeleteCta";
+        deleteCta.innerHTML = `
+          <div class="x-icon">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </div>
+          <span>Delete?</span>
+        `;
+        container.appendChild(deleteCta);
+      
+        // Inject the modal overlay
+        const overlay = document.createElement("div");
+        overlay.className = "anno-overlay";
+        overlay.id = "annoOverlay";
+        overlay.innerHTML = `
+          <div class="anno-modal">
+            <div class="anno-modal-header">
+              <div class="spacer"></div>
+              <span class="title">Note</span>
+              <button class="anno-close-btn" id="annoCloseBtn">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round">
+                  <line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <div class="anno-modal-divider"></div>
+            <div class="anno-modal-body">
+              <textarea class="anno-textarea" id="annoText" placeholder="Type your annotation..."></textarea>
+      
+              <div class="anno-control-row">
+                <div class="anno-color-group">
+                  <label>Text</label>
+                  <div class="anno-color-control">
+                    <div class="anno-swatch-area">
+                      <div class="anno-color-dot" id="annoTextDot" style="background:#000000"></div>
+                      <span class="anno-color-hex" id="annoTextHex">000000</span>
+                      <input type="color" id="annoTextPicker" value="#000000">
+                    </div>
+                    <button class="anno-opacity-btn" id="annoTextOpBtn">100%</button>
+                    <div class="anno-opacity-popup" id="annoTextOpPop">
+                      <input type="range" min="0" max="100" value="100" id="annoTextOpSlider">
+                      <span id="annoTextOpVal">100%</span>
+                    </div>
+                  </div>
+                </div>
+                <button class="anno-post-btn" id="annoPostBtn">POST</button>
+              </div>
+      
+              <div class="anno-bg-row">
+                <div class="anno-color-group" style="flex:1">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;margin-left:4px;">
+                    <label style="margin:0">BG</label>
+                    <label class="anno-bg-toggle" style="margin:0">
+                      <input type="checkbox" id="annoBgEnabled" checked>
+                      <span style="font-size:10px;color:#a09888;">show</span>
+                    </label>
+                  </div>
+                  <div class="anno-color-control">
+                    <div class="anno-swatch-area">
+                      <div class="anno-color-dot" id="annoBgDot" style="background:#0f1117"></div>
+                      <span class="anno-color-hex" id="annoBgHex">0F1117</span>
+                      <input type="color" id="annoBgPicker" value="#0f1117">
+                    </div>
+                    <button class="anno-opacity-btn" id="annoBgOpBtn">80%</button>
+                    <div class="anno-opacity-popup" id="annoBgOpPop">
+                      <input type="range" min="0" max="100" value="80" id="annoBgOpSlider">
+                      <span id="annoBgOpVal">80%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+      
+              <div class="anno-dropdown-wrap" id="annoFontWrap">
+                <button class="anno-dropdown-btn" id="annoFontBtn">
+                  <span id="annoFontLabel">Inter</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="anno-dropdown-menu above" id="annoFontMenu"></div>
+              </div>
+              <div class="anno-font-row">
+                <div class="anno-dropdown-wrap" id="annoWeightWrap">
+                  <button class="anno-dropdown-btn" id="annoWeightBtn">
+                    <span id="annoWeightLabel">Regular</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+                  <div class="anno-dropdown-menu above" id="annoWeightMenu"></div>
+                </div>
+                <div class="anno-dropdown-wrap" id="annoSizeWrap">
+                  <button class="anno-dropdown-btn" id="annoSizeBtn">
+                    <span id="annoSizeLabel">24</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+                  <div class="anno-dropdown-menu above" id="annoSizeMenu"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+      
+        // Wire up events
+        $("annoCloseBtn").addEventListener("click", closeAnnoModal);
+        $("annoPostBtn").addEventListener("click", postAnnotation);
+        $("annoBgEnabled").addEventListener("change", (e) => {
+          annoModalState.bgEnabled = e.target.checked;
+        });
+      
+        setupAnnoColor("annoText", "textColor", "textAlpha");
+        setupAnnoColor("annoBg", "bgColor", "bgAlpha");
+        setupAnnoDropdown(
+          "annoFontWrap",
+          "annoFontBtn",
+          "annoFontMenu",
+          ANNO_FONTS,
+          (f) => {
+            annoModalState.fontFamily = f;
+            $("annoFontLabel").textContent = f.name;
+            applyAnnoTextareaStyles();
+          },
+          (el, f) => {
+            el.textContent = f.name;
+            el.style.fontFamily = f.family;
+          },
+        );
+        setupAnnoDropdown(
+          "annoWeightWrap",
+          "annoWeightBtn",
+          "annoWeightMenu",
+          ANNO_WEIGHTS,
+          (w) => {
+            annoModalState.weight = w;
+            $("annoWeightLabel").textContent = w.label;
+            applyAnnoTextareaStyles();
+          },
+          (el, w) => {
+            el.textContent = w.label;
+            el.style.fontWeight = w.value;
+            el.style.fontStyle = w.style;
+          },
+        );
+        setupAnnoDropdown(
+          "annoSizeWrap",
+          "annoSizeBtn",
+          "annoSizeMenu",
+          ANNO_SIZES,
+          (s) => {
+            annoModalState.size = s;
+            $("annoSizeLabel").textContent = s;
+            applyAnnoTextareaStyles();
+          },
+          (el, s) => {
+            el.textContent = s;
+          },
+        );
+      
+        // Delete CTA — use mousedown so it fires before the document click dismiss
+        deleteCta.addEventListener("mousedown", (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          if (annoDeleteTargetIdx >= 0 && annoDeleteTargetIdx < annotations.length) {
+            saveUndo();
+            annotations.splice(annoDeleteTargetIdx, 1);
+            redraw();
+          }
+          hideAnnoDeleteCta();
+        });
+      
+        // Dismiss delete CTA on outside click (mousedown to match)
+        document.addEventListener("mousedown", (e) => {
+          if (deleteCta.classList.contains("show") && !deleteCta.contains(e.target)) {
+            hideAnnoDeleteCta();
+          }
+        });
+      }
+      
+      // ═══ MODAL OPEN / CLOSE ═══
+      function openAnnoModal() {
+        $("annoOverlay").classList.add("show");
+        $("annoText").value = "";
+        $("annoText").focus();
+        applyAnnoTextareaStyles();
+      }
+      
+      function closeAnnoModal() {
+        $("annoOverlay").classList.remove("show");
+        closeAllAnnoDropdowns();
+      }
+      
+      function applyAnnoTextareaStyles() {
+        const ta = $("annoText");
+        ta.style.fontFamily = annoModalState.fontFamily.family;
+        ta.style.fontWeight = annoModalState.weight.value;
+        ta.style.fontStyle = annoModalState.weight.style;
+        ta.style.fontSize = annoModalState.size + "px";
+      }
+      
+      // ═══ POST ═══
+      function postAnnotation() {
+        const text = $("annoText").value.trim();
+        if (!text) {
+          showToast("Type some text first");
+          return;
+        }
+      
+        saveUndo();
+        annotations.push({
+          text: text,
+          wx: cam.x,
+          wy: cam.y,
+          fontFamilyName: annoModalState.fontFamily.name,
+          fontFamilyCSS: annoModalState.fontFamily.family,
+          fontWeight: annoModalState.weight.value,
+          fontStyle: annoModalState.weight.style,
+          size: annoModalState.size,
+          textColor: annoModalState.textColor,
+          textAlpha: annoModalState.textAlpha,
+          bgColor: annoModalState.bgColor,
+          bgAlpha: annoModalState.bgAlpha,
+          bgEnabled: annoModalState.bgEnabled,
+        });
+        closeAnnoModal();
+        redraw();
+        showToast("Note posted");
+      }
+      
+      // ═══ DRAW ANNOTATIONS ON CANVAS ═══
+      function drawAnnotations() {
+        for (const a of annotations) {
+          const s = w2s(a.wx, a.wy);
+          const lines = a.text.split("\n");
+          const fontSize = a.size * Math.min(1.5, cam.zoom * 3);
+          const lineHeight = fontSize * 1.3;
+          const totalHeight = lines.length * lineHeight;
+      
+          ctx.save();
+          const fontStyleStr =
+            (a.fontStyle === "italic" ? "italic " : "") +
+            a.fontWeight +
+            " " +
+            fontSize +
+            "px " +
+            a.fontFamilyCSS;
+          ctx.font = fontStyleStr;
+      
+          let maxW = 0;
+          for (const ln of lines) {
+            const w = ctx.measureText(ln).width;
+            if (w > maxW) maxW = w;
+          }
+      
+          const padX = 8,
+            padY = 5;
+          const boxW = maxW + padX * 2;
+          const boxH = totalHeight + padY * 2;
+      
+          // Store screen-space hit area for interaction
+          a._sx = s.x;
+          a._sy = s.y;
+          a._hitW = boxW;
+          a._hitH = boxH;
+      
+          // BG box
+          if (a.bgEnabled) {
+            const br = parseInt(a.bgColor.slice(1, 3), 16);
+            const bg = parseInt(a.bgColor.slice(3, 5), 16);
+            const bb = parseInt(a.bgColor.slice(5, 7), 16);
+            ctx.fillStyle =
+              "rgba(" + br + "," + bg + "," + bb + "," + a.bgAlpha / 100 + ")";
+            roundRect(ctx, s.x - boxW / 2, s.y - boxH / 2, boxW, boxH, 4);
+            ctx.fill();
+          }
+      
+          // Text
+          const tr = parseInt(a.textColor.slice(1, 3), 16);
+          const tg = parseInt(a.textColor.slice(3, 5), 16);
+          const tb = parseInt(a.textColor.slice(5, 7), 16);
+          ctx.fillStyle =
+            "rgba(" + tr + "," + tg + "," + tb + "," + a.textAlpha / 100 + ")";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "top";
+      
+          const startY = s.y - totalHeight / 2;
+          for (let i = 0; i < lines.length; i++) {
+            ctx.fillText(lines[i], s.x, startY + i * lineHeight);
+          }
+          ctx.restore();
+        }
+      }
+      
+      // ═══ HIT TEST ═══
+      function hitTestAnno(sx, sy) {
+        for (let i = annotations.length - 1; i >= 0; i--) {
+          const a = annotations[i];
+          if (a._sx === undefined) continue;
+          const hw = (a._hitW || 60) / 2,
+            hh = (a._hitH || 20) / 2;
+          if (
+            sx >= a._sx - hw &&
+            sx <= a._sx + hw &&
+            sy >= a._sy - hh &&
+            sy <= a._sy + hh
+          ) {
+            return i;
+          }
+        }
+        return -1;
+      }
+      
+      // ═══ DELETE CTA ═══
+      function showAnnoDeleteCta(anno) {
+        const cta = $("annoDeleteCta");
+        cta.style.left = anno._sx + "px";
+        cta.style.top = anno._sy - (anno._hitH || 20) / 2 + "px";
+        cta.classList.add("show");
+      }
+      
+      function hideAnnoDeleteCta() {
+        $("annoDeleteCta").classList.remove("show");
+        annoDeleteTargetIdx = -1;
+      }
+      
+      // ═══ COLOR HELPER ═══
+      function setupAnnoColor(prefix, stateKey, alphaKey) {
+        const picker = $(prefix + "Picker");
+        const dot = $(prefix + "Dot");
+        const hex = $(prefix + "Hex");
+        const opBtn = $(prefix + "OpBtn");
+        const opPop = $(prefix + "OpPop");
+        const opSlider = $(prefix + "OpSlider");
+        const opVal = $(prefix + "OpVal");
+      
+        picker.addEventListener("input", (e) => {
+          annoModalState[stateKey] = e.target.value;
+          dot.style.background = e.target.value;
+          hex.textContent = e.target.value.slice(1).toUpperCase();
+        });
+        opBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          closeAllAnnoDropdowns();
+          opPop.classList.toggle("show");
+        });
+        opSlider.value = annoModalState[alphaKey];
+        opVal.textContent = annoModalState[alphaKey] + "%";
+        opBtn.textContent = annoModalState[alphaKey] + "%";
+        opSlider.addEventListener("input", (e) => {
+          annoModalState[alphaKey] = parseInt(e.target.value);
+          opBtn.textContent = annoModalState[alphaKey] + "%";
+          opVal.textContent = annoModalState[alphaKey] + "%";
+        });
+      }
+      
+      // ═══ DROPDOWN HELPER ═══
+      function closeAllAnnoDropdowns() {
+        document
+          .querySelectorAll(".anno-dropdown-menu")
+          .forEach((m) => m.classList.remove("show"));
+        document
+          .querySelectorAll(".anno-dropdown-btn")
+          .forEach((b) => b.classList.remove("open"));
+        document
+          .querySelectorAll(".anno-opacity-popup")
+          .forEach((p) => p.classList.remove("show"));
+      }
+      
+      function setupAnnoDropdown(wrapId, btnId, menuId, items, onSelect, renderItem) {
+        const btn = $(btnId);
+        const menu = $(menuId);
+        menu.innerHTML = "";
+        items.forEach((item) => {
+          if (item.label === "sep" || item === "sep") {
+            const sep = document.createElement("div");
+            sep.className = "anno-dropdown-sep";
+            menu.appendChild(sep);
+            return;
+          }
+          const div = document.createElement("div");
+          div.className = "anno-dropdown-item";
+          renderItem(div, item);
+          div.addEventListener("click", (e) => {
+            e.stopPropagation();
+            onSelect(item);
+            closeAllAnnoDropdowns();
+          });
+          menu.appendChild(div);
+        });
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const wasOpen = menu.classList.contains("show");
+          closeAllAnnoDropdowns();
+          if (!wasOpen) {
+            menu.classList.add("show");
+            btn.classList.add("open");
+          }
+        });
+      }
+
+
+      // ── dropshadow-modal ──
+      // ═══════════════ DROP SHADOW MODAL ═══════════════
+      
+      function initDsModal() {
+        // Inject modal overlay
+        const overlay = document.createElement("div");
+        overlay.className = "ds-overlay";
+        overlay.id = "dsOverlay";
+        overlay.innerHTML = `
+          <div class="ds-modal" id="dsModal">
+            <div class="ds-modal-header" id="dsHeader">
+              <div class="spacer"></div>
+              <span class="title">Drop Shadow</span>
+              <button class="ds-close-btn" id="dsCloseBtn">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round">
+                  <line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <div class="ds-modal-divider"></div>
+            <div class="ds-modal-body">
+              <div class="ds-slider-group">
+                <span class="ds-slider-label">X</span>
+                <div class="ds-slider-row">
+                  <input type="range" id="dsmXSlider" min="-20" max="20" value="2" step="1">
+                  <input class="ds-slider-val" id="dsmXVal" value="2">
+                </div>
+              </div>
+              <div class="ds-slider-group">
+                <span class="ds-slider-label">Y</span>
+                <div class="ds-slider-row">
+                  <input type="range" id="dsmYSlider" min="-20" max="20" value="2" step="1">
+                  <input class="ds-slider-val" id="dsmYVal" value="2">
+                </div>
+              </div>
+              <div class="ds-slider-group">
+                <span class="ds-slider-label">Blur</span>
+                <div class="ds-slider-row">
+                  <input type="range" id="dsmBlurSlider" min="0" max="30" value="4" step="1">
+                  <input class="ds-slider-val" id="dsmBlurVal" value="4">
+                </div>
+              </div>
+              <div class="ds-slider-group">
+                <span class="ds-slider-label">Opacity</span>
+                <div class="ds-slider-row">
+                  <input type="range" id="dsmOpSlider" min="0" max="100" value="30" step="1">
+                  <input class="ds-slider-val" id="dsmOpVal" value="30%">
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+                <div style="display:flex;align-items:center;gap:2px;">
+                  <div style="position:relative;display:flex;align-items:center;background:#383838;border-radius:4px;padding:3px 8px 3px 6px;gap:5px;cursor:pointer;">
+                    <div id="dsmColorDot" style="width:14px;height:14px;border-radius:50%;border:1px solid #555;background:#000000;flex-shrink:0;"></div>
+                    <span id="dsmColorHex" style="font-size:12px;font-family:'SF Mono',Menlo,monospace;color:#EBE3D4;">000000</span>
+                    <input type="color" id="dsmColorPicker" value="#000000" style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;border:none;">
+                  </div>
+                </div>
+                <button class="ds-remove-btn" id="dsmRemoveBtn">Remove</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+      
+        // Wire events
+        $("dsCloseBtn").addEventListener("click", closeDsModal);
+        $("dsmRemoveBtn").addEventListener("click", dsmRemoveShadow);
+      
+        $("dsmXSlider").addEventListener("input", function() { dsmUpdateFromSlider("x", this); });
+        $("dsmYSlider").addEventListener("input", function() { dsmUpdateFromSlider("y", this); });
+        $("dsmBlurSlider").addEventListener("input", function() { dsmUpdateFromSlider("blur", this); });
+        $("dsmOpSlider").addEventListener("input", function() { dsmUpdateFromSlider("op", this); });
+      
+        $("dsmXVal").addEventListener("change", function() { dsmManual("x", this.value); });
+        $("dsmYVal").addEventListener("change", function() { dsmManual("y", this.value); });
+        $("dsmBlurVal").addEventListener("change", function() { dsmManual("blur", this.value); });
+        $("dsmOpVal").addEventListener("change", function() { dsmManual("op", this.value); });
+      
+        // Enter to commit
+        for (const id of ["dsmXVal","dsmYVal","dsmBlurVal","dsmOpVal"]) {
+          $(id).addEventListener("keydown", function(e) { if (e.key === "Enter") this.blur(); });
+        }
+      
+        $("dsmColorPicker").addEventListener("input", function() {
+          const t = tracts[activeTractIdx];
+          if (!t || !t.dropShadow) return;
+          t.dropShadow.color = this.value;
+          $("dsmColorDot").style.background = this.value;
+          $("dsmColorHex").textContent = this.value.slice(1).toUpperCase();
+          redraw();
+        });
+      
+        // Draggable
+        let dragging = false, dOff = { x: 0, y: 0 };
+        const modal = $("dsModal"), header = $("dsHeader");
+        header.addEventListener("mousedown", function(e) {
+          if (e.target.closest(".ds-close-btn")) return;
+          dragging = true;
+          const rect = modal.getBoundingClientRect();
+          dOff = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+          e.preventDefault();
+        });
+        window.addEventListener("mousemove", function(e) {
+          if (!dragging) return;
+          let nx = e.clientX - dOff.x, ny = e.clientY - dOff.y;
+          nx = Math.max(0, Math.min(window.innerWidth - modal.offsetWidth, nx));
+          ny = Math.max(0, Math.min(window.innerHeight - modal.offsetHeight, ny));
+          modal.style.left = nx + "px"; modal.style.top = ny + "px";
+        });
+        window.addEventListener("mouseup", function() { dragging = false; });
+      }
+      
+      function openDsModal() {
+        const t = tracts[activeTractIdx];
+        if (!t) { showToast("Select a layer first"); return; }
+        if (!t.dropShadow) {
+          t.dropShadow = JSON.parse(JSON.stringify(dropShadow));
+        }
+        $("dsOverlay").classList.add("show");
+        // Center
+        const m = $("dsModal");
+        m.style.left = (window.innerWidth - m.offsetWidth) / 2 + "px";
+        m.style.top = (window.innerHeight - m.offsetHeight) / 2 + "px";
+        syncDsModal();
+      }
+      
+      function closeDsModal() {
+        $("dsOverlay").classList.remove("show");
+      }
+      
+      function syncDsModal() {
+        const t = tracts[activeTractIdx];
+        if (!t || !t.dropShadow) return;
+        const ds = t.dropShadow;
+        $("dsmXSlider").value = ds.x; $("dsmXVal").value = ds.x;
+        $("dsmYSlider").value = ds.y; $("dsmYVal").value = ds.y;
+        $("dsmBlurSlider").value = ds.blur; $("dsmBlurVal").value = ds.blur;
+        const opPct = Math.round(ds.alpha * 100);
+        $("dsmOpSlider").value = opPct; $("dsmOpVal").value = opPct + "%";
+        $("dsmColorPicker").value = ds.color;
+        $("dsmColorDot").style.background = ds.color;
+        $("dsmColorHex").textContent = ds.color.slice(1).toUpperCase();
+        dsmFillAll();
+      }
+      
+      function dsmFill(slider) {
+        const min = parseFloat(slider.min), max = parseFloat(slider.max);
+        const pct = ((parseFloat(slider.value) - min) / (max - min)) * 100;
+        slider.style.setProperty("--pct", pct + "%");
+      }
+      function dsmFillAll() {
+        dsmFill($("dsmXSlider")); dsmFill($("dsmYSlider"));
+        dsmFill($("dsmBlurSlider")); dsmFill($("dsmOpSlider"));
+      }
+      
+      function dsmUpdateFromSlider(prop, slider) {
+        const t = tracts[activeTractIdx];
+        if (!t || !t.dropShadow) return;
+        const v = parseInt(slider.value);
+        if (prop === "x") { t.dropShadow.x = v; $("dsmXVal").value = v; }
+        else if (prop === "y") { t.dropShadow.y = v; $("dsmYVal").value = v; }
+        else if (prop === "blur") { t.dropShadow.blur = v; $("dsmBlurVal").value = v; }
+        else if (prop === "op") { t.dropShadow.alpha = v / 100; $("dsmOpVal").value = v + "%"; }
+        dsmFill(slider);
+        redraw();
+      }
+      
+      function dsmManual(prop, raw) {
+        const t = tracts[activeTractIdx];
+        if (!t || !t.dropShadow) return;
+        const n = parseFloat(raw.replace(/[^0-9.\-]/g, ""));
+        if (isNaN(n)) return;
+        if (prop === "x") {
+          const c = Math.max(-20, Math.min(20, Math.round(n)));
+          t.dropShadow.x = c; $("dsmXSlider").value = c; $("dsmXVal").value = c;
+        } else if (prop === "y") {
+          const c = Math.max(-20, Math.min(20, Math.round(n)));
+          t.dropShadow.y = c; $("dsmYSlider").value = c; $("dsmYVal").value = c;
+        } else if (prop === "blur") {
+          const c = Math.max(0, Math.min(30, Math.round(n)));
+          t.dropShadow.blur = c; $("dsmBlurSlider").value = c; $("dsmBlurVal").value = c;
+        } else if (prop === "op") {
+          const c = Math.max(0, Math.min(100, Math.round(n)));
+          t.dropShadow.alpha = c / 100; $("dsmOpSlider").value = c; $("dsmOpVal").value = c + "%";
+        }
+        dsmFillAll();
+        redraw();
+      }
+      
+      function dsmRemoveShadow() {
+        const t = tracts[activeTractIdx];
+        if (!t) return;
+        saveUndo();
+        t.dropShadow = null;
+        closeDsModal();
+        redraw();
+        showToast("Drop shadow removed");
+      }
+
+
+      // ── image-modal ──
+      // ═══════════════ IMAGE MODAL ═══════════════
+      
+      function initImageModal() {
+        const overlay = document.createElement("div");
+        overlay.className = "img-overlay";
+        overlay.id = "imgOverlay";
+        overlay.innerHTML = `
+          <div class="img-modal" id="imgModal">
+            <div class="img-modal-header" id="imgHeader">
+              <div class="spacer"></div>
+              <span class="title">Image</span>
+              <button class="img-close-btn" id="imgCloseBtn">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round">
+                  <line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <div class="img-modal-divider"></div>
+            <div class="img-modal-body">
+              <div>
+                <div style="font-size:11px;color:#EBE3D4;margin-bottom:3px;">IMG</div>
+                <div class="img-row">
+                  <div class="img-thumb" id="imgmThumb"></div>
+                  <span class="img-name" id="imgmName">No image</span>
+                  <input class="img-opacity-val" id="imgmOpVal" value="40%">
+                  <button class="img-icon-btn eye-btn" id="imgmEyeBtn" title="Toggle visibility">
+                    <svg width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  </button>
+                  <button class="img-icon-btn" id="imgmDelBtn" title="Remove image">
+                    <svg width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round">
+                      <line x1="4" y1="12" x2="20" y2="12"/>
+                    </svg>
+                  </button>
+                  <button class="img-icon-btn" id="imgmAddBtn" title="Add / change image">
+                    <svg width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round">
+                      <line x1="4" y1="12" x2="20" y2="12"/>
+                      <line x1="12" y1="4" x2="12" y2="20"/>
+                    </svg>
+                  </button>
+                  <input type="file" id="imgmFileInput" class="img-hidden-input" accept="image/*">
+                </div>
+              </div>
+              <div class="img-slider-group">
+                <span class="img-slider-label">Scale</span>
+                <div class="img-slider-row">
+                  <input type="range" id="imgmScaleSlider" min="1" max="2000" value="100" step="1">
+                  <input class="img-slider-val" id="imgmScaleVal" value="100%">
+                </div>
+              </div>
+              <div class="img-slider-group">
+                <span class="img-slider-label">Rotation</span>
+                <div class="img-slider-row">
+                  <input type="range" id="imgmRotSlider" min="-180" max="180" value="0" step="1">
+                  <input class="img-slider-val" id="imgmRotVal" value="0°">
+                </div>
+              </div>
+              <div class="img-slider-group">
+                <span class="img-slider-label">Fine Rotation</span>
+                <div class="img-slider-row">
+                  <input type="range" id="imgmFineSlider" min="-200" max="200" value="0" step="1">
+                  <input class="img-slider-val" id="imgmFineVal" value="0.0°">
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+      
+        $("imgCloseBtn").addEventListener("click", closeImageModal);
+        $("imgmEyeBtn").addEventListener("click", imgmToggleVis);
+        $("imgmDelBtn").addEventListener("click", imgmRemove);
+        $("imgmAddBtn").addEventListener("click", function() { $("imgmFileInput").click(); });
+        $("imgmFileInput").addEventListener("change", function() { imgmLoadFile(this); });
+      
+        $("imgmScaleSlider").addEventListener("input", function() { imgmSlider("scale", this); });
+        $("imgmRotSlider").addEventListener("input", function() { imgmSlider("rot", this); });
+        $("imgmFineSlider").addEventListener("input", function() { imgmSlider("fine", this); });
+      
+        $("imgmScaleVal").addEventListener("change", function() { imgmManual("scale", this.value); });
+        $("imgmRotVal").addEventListener("change", function() { imgmManual("rot", this.value); });
+        $("imgmFineVal").addEventListener("change", function() { imgmManual("fine", this.value); });
+        $("imgmOpVal").addEventListener("change", function() { imgmManual("op", this.value); });
+      
+        for (const id of ["imgmScaleVal","imgmRotVal","imgmFineVal","imgmOpVal"]) {
+          $(id).addEventListener("keydown", function(e) { if (e.key === "Enter") this.blur(); });
+        }
+      
+        // Draggable
+        let dragging = false, dOff = { x: 0, y: 0 };
+        const modal = $("imgModal"), header = $("imgHeader");
+        header.addEventListener("mousedown", function(e) {
+          if (e.target.closest(".img-close-btn")) return;
+          dragging = true;
+          const rect = modal.getBoundingClientRect();
+          dOff = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+          e.preventDefault();
+        });
+        window.addEventListener("mousemove", function(e) {
+          if (!dragging) return;
+          let nx = e.clientX - dOff.x, ny = e.clientY - dOff.y;
+          nx = Math.max(0, Math.min(window.innerWidth - modal.offsetWidth, nx));
+          ny = Math.max(0, Math.min(window.innerHeight - modal.offsetHeight, ny));
+          modal.style.left = nx + "px"; modal.style.top = ny + "px";
+        });
+        window.addEventListener("mouseup", function() { dragging = false; });
+      }
+      
+      function openImageModal() {
+        if (!bgS.img) { showToast("Load an image first"); return; }
+        $("imgOverlay").classList.add("show");
+        const m = $("imgModal");
+        m.style.left = (window.innerWidth - m.offsetWidth) / 2 + "px";
+        m.style.top = (window.innerHeight - m.offsetHeight) / 2 + "px";
+        syncImageModal();
+      }
+      
+      function closeImageModal() {
+        $("imgOverlay").classList.remove("show");
+      }
+      
+      function syncImageModal() {
+        const s = $("imgmScaleSlider"), sc = Math.round(bgS.scale * 100);
+        s.value = sc; $("imgmScaleVal").value = sc + "%"; imgmFill(s);
+      
+        const r = $("imgmRotSlider");
+        r.value = bgS.rotation; $("imgmRotVal").value = bgS.rotation + "°"; imgmFill(r);
+      
+        const f = $("imgmFineSlider"), fv = Math.round((bgS.rotFine || 0) * 10);
+        f.value = fv; $("imgmFineVal").value = (bgS.rotFine || 0).toFixed(1) + "°"; imgmFill(f);
+      
+        $("imgmOpVal").value = Math.round(bgS.alpha * 100) + "%";
+      
+        $("imgmEyeBtn").classList.toggle("off", !bgS.show);
+      
+        if (bgS.img) {
+          $("imgmThumb").style.backgroundImage = "url(" + bgS.img.src + ")";
+          $("imgmThumb").classList.add("has-img");
+          $("imgmName").textContent = "Image";
+        } else {
+          $("imgmThumb").style.backgroundImage = "";
+          $("imgmThumb").classList.remove("has-img");
+          $("imgmName").textContent = "No image";
+        }
+      }
+      
+      function imgmFill(slider) {
+        const min = parseFloat(slider.min), max = parseFloat(slider.max);
+        const pct = ((parseFloat(slider.value) - min) / (max - min)) * 100;
+        slider.style.setProperty("--pct", pct + "%");
+      }
+      
+      function imgmSlider(prop, slider) {
+        const v = parseInt(slider.value);
+        if (prop === "scale") { bgS.scale = v / 100; $("imgmScaleVal").value = v + "%"; }
+        else if (prop === "rot") { bgS.rotation = v; $("imgmRotVal").value = v + "°"; }
+        else if (prop === "fine") { bgS.rotFine = v / 10; $("imgmFineVal").value = (v / 10).toFixed(1) + "°"; }
+        imgmFill(slider);
+        redraw();
+      }
+      
+      function imgmManual(prop, raw) {
+        const n = parseFloat(raw.replace(/[^0-9.\-]/g, ""));
+        if (isNaN(n)) return;
+        if (prop === "scale") {
+          const c = Math.max(1, Math.min(2000, Math.round(n)));
+          bgS.scale = c / 100;
+          $("imgmScaleSlider").value = c; $("imgmScaleVal").value = c + "%";
+          imgmFill($("imgmScaleSlider"));
+        } else if (prop === "rot") {
+          const c = Math.max(-180, Math.min(180, Math.round(n)));
+          bgS.rotation = c;
+          $("imgmRotSlider").value = c; $("imgmRotVal").value = c + "°";
+          imgmFill($("imgmRotSlider"));
+        } else if (prop === "fine") {
+          const sv = Math.max(-200, Math.min(200, Math.round(n * 10)));
+          bgS.rotFine = sv / 10;
+          $("imgmFineSlider").value = sv; $("imgmFineVal").value = (sv / 10).toFixed(1) + "°";
+          imgmFill($("imgmFineSlider"));
+        } else if (prop === "op") {
+          const c = Math.max(0, Math.min(100, Math.round(n)));
+          bgS.alpha = c / 100;
+          $("imgmOpVal").value = c + "%";
+        }
+        redraw();
+      }
+      
+      function imgmToggleVis() {
+        bgS.show = !bgS.show;
+        $("imgmEyeBtn").classList.toggle("off", !bgS.show);
+        $("bgShow").checked = bgS.show;
+        redraw();
+      }
+      
+      function imgmRemove() {
+        clearBgImage();
+        updateImgSettingsBtn();
+        syncImageModal();
+        closeImageModal();
+      }
+      
+      function imgmLoadFile(input) {
+        const f = input.files[0];
+        if (!f) return;
+        const r = new FileReader();
+        r.onload = function(e) {
+          const img = new Image();
+          img.onload = function() {
+            bgS.img = img;
+            bgS.wx = cam.x;
+            bgS.wy = cam.y;
+            bgS.show = true;
+            $("bgShow").checked = true;
+            updateImgSettingsBtn();
+            syncImageModal();
+            redraw();
+            showToast("Image loaded");
+          };
+          img.src = e.target.result;
+        };
+        r.readAsDataURL(f);
+        input.value = "";
+      }
+      
+      function updateImgSettingsBtn() {
+        const btn = $("imgSettingsBtn");
+        const hint = $("imgSettingsHint");
+        if (btn) {
+          btn.style.display = bgS.img ? "block" : "none";
+        }
+        if (hint) {
+          hint.style.display = bgS.img ? "none" : "block";
+        }
+      }
 
 
       // ── math ──
@@ -1982,7 +3108,7 @@
           sec,
           dir,
           dist,
-          bearingStr: `${quad} ${String(deg).padStart(2, "0")}°${String(min).padStart(2, "0")}'${sec.toFixed(2).padStart(5, "0")}" ${dir}`,
+          bearingStr: `${quad} ${String(deg).padStart(2, "0")}°${String(min).padStart(2, "0")}'${sec % 1 === 0 ? String(Math.round(sec)).padStart(2, "0") : sec.toFixed(2).padStart(5, "0")}" ${dir}`,
           labelOffset: null,
           labelRotation: 0,
           toRad: makeToRad(quad, deg, min, sec, dir),
@@ -2111,7 +3237,7 @@
           mi = chordBearing.min,
           s = chordBearing.sec,
           dir = chordBearing.dir;
-        const bearingStr = `${q} ${String(d).padStart(2, "0")}°${String(mi).padStart(2, "0")}'${s.toFixed(2).padStart(5, "0")}" ${dir}`;
+        const bearingStr = `${q} ${String(d).padStart(2, "0")}°${String(mi).padStart(2, "0")}'${s % 1 === 0 ? String(Math.round(s)).padStart(2, "0") : s.toFixed(2).padStart(5, "0")}" ${dir}`;
       
         return {
           quad: q,
@@ -2383,6 +3509,7 @@
         saveUndo();
         tracts = [];
         activeTractIdx = -1;
+        annotations = [];
         legendPos = { sx: null, sy: null };
         updateTractList();
         updateCallSchedule();
@@ -2404,13 +3531,11 @@
         if (activeTractIdx < 0) return;
         const t = tracts[activeTractIdx];
         if (!t || !t.calls.length) return;
-        // Build a readable call list for the legal description box
         const lines = t.calls.map((c, idx) => {
-          const prefix = `(${idx + 1}) `;
           if (c.isCurve) {
-            return `${prefix}Curve ${c.curveDir === "L" ? "Left" : "Right"}, R=${c.radius.toFixed(2)}', Δ=${c.delta.toFixed(4)}°, Chord: ${c.quad} ${c.deg}°${String(c.min).padStart(2, "0")}'${c.sec.toFixed(2)}" ${c.dir}, ${c.dist.toFixed(2)}'`;
+            return `thence Curve ${c.curveDir === "L" ? "Left" : "Right"}, R=${c.radius.toFixed(2)}', Δ=${c.delta.toFixed(4)}°, Chord: ${c.quad} ${c.deg}°${String(c.min).padStart(2, "0")}'${c.sec % 1 === 0 ? String(Math.round(c.sec)).padStart(2, "0") : c.sec.toFixed(2)}" ${c.dir}, ${c.dist.toFixed(2)}'`;
           }
-          return `${prefix}${c.bearingStr}  ${c.dist.toFixed(2)}'`;
+          return `thence ${c.bearingStr}  ${c.dist.toFixed(2)}'`;
         });
         $("deedInput").value = lines.join("\n");
       }
@@ -2523,9 +3648,9 @@
         $("propHatch").checked = t.hatching;
         $("propLegendTextColor").value = t.legendTextColor || "#000000";
       
-        // Update drop shadow popover if visible
-        if ($("dropShadowPopover").classList.contains("show")) {
-          updateDropShadowValues();
+        // Update drop shadow modal if visible
+        if ($("dsOverlay") && $("dsOverlay").classList.contains("show")) {
+          syncDsModal();
         }
       }
       
@@ -2603,6 +3728,7 @@
             bgS.wy = cam.y;
             bgS.show = true;
             $("bgShow").checked = true;
+            if (typeof updateImgSettingsBtn === "function") updateImgSettingsBtn();
             redraw();
             showToast("Image loaded");
           };
@@ -2613,36 +3739,12 @@
       function clearBgImage() {
         bgS.img = null;
         $("bgInput").value = "";
+        if (typeof updateImgSettingsBtn === "function") updateImgSettingsBtn();
         redraw();
       }
       function toggleBgImageUI() {
         if (bgS.img) {
-          const pop = $("bgPopover");
-          pop.classList.toggle("show");
-          if (pop.classList.contains("show")) {
-            const btn = $("bgImgBtn");
-            const r = btn.getBoundingClientRect();
-            pop.style.left = Math.max(10, r.left - 60) + "px";
-            pop.style.bottom = (window.innerHeight - r.top + 8) + "px";
-            pop.style.top = "auto";
-            $("bgAlpha").value = Math.round(bgS.alpha * 100);
-            $("bgScale").value = Math.round(bgS.scale * 100);
-            $("bgScaleV").textContent = Math.round(bgS.scale * 100) + "%";
-            $("bgRot").value = bgS.rotation;
-            $("bgRotV").textContent = bgS.rotation + "°";
-            $("bgRotFine").value = Math.round((bgS.rotFine || 0) * 10);
-            $("bgRotFineV").textContent = (bgS.rotFine || 0).toFixed(1) + "°";
-            $("bgShow").checked = bgS.show;
-            setTimeout(() => {
-              const closer = (e) => {
-                if (!pop.contains(e.target) && e.target.id !== "bgImgBtn" && !e.target.closest("#bgImgBtn")) {
-                  pop.classList.remove("show");
-                  document.removeEventListener("click", closer);
-                }
-              };
-              document.addEventListener("click", closer);
-            }, 0);
-          }
+          openImageModal();
         } else {
           $("bgInput").click();
         }
@@ -2715,10 +3817,7 @@
           if (tract.numberCalls) lines.push("x");
           if (tract.showBearings) lines.push(call.bearingStr);
           if (tract.showDistances) lines.push("x");
-          const lw = lines.reduce(
-            (m, l) => Math.max(m, l.length * fs * 0.55),
-            0,
-          );
+          const lw = lines.reduce((m, l) => Math.max(m, l.length * fs * 0.55), 0);
           const ul = tract.leaderLines && (ll < lw * 1.2 || ll < 60),
             off = ul ? Math.max(60, ll * 0.8) : 18;
           return { x: mx + px * off, y: my + py * off, ax: mx, ay: my };
@@ -2809,85 +3908,13 @@
         legendStyle.dropShadow = $("legendDropShadow").checked;
       }
       
-      function toggleDropShadowPopover() {
-        const pop = $("dropShadowPopover");
-        if (!pop) return;
-        if (pop.classList.contains("show")) {
-          pop.classList.remove("show");
-        } else {
-          const t = tracts[activeTractIdx];
-          if (!t) return;
-          if (!t.dropShadow) {
-            t.dropShadow = JSON.parse(JSON.stringify(dropShadow));
-          }
-          pop.classList.add("show");
-          updateDropShadowValues();
-          // Position popover to the right of right panel
-          const rp = $("rpLayerProps");
-          if (rp) {
-            pop.style.top = rp.getBoundingClientRect().top + "px";
-            pop.style.left = window.innerWidth - 210 - 200 + "px";
-            // Close on outside click
-            setTimeout(() => {
-              const closer = (e) => {
-                if (
-                  !pop.contains(e.target) &&
-                  !$(e.target.id)?.closest?.(".ftb-b")
-                ) {
-                  pop.classList.remove("show");
-                  document.removeEventListener("click", closer);
-                }
-              };
-              document.addEventListener("click", closer);
-            }, 0);
-          }
-        }
-      }
-      
-      function updateDropShadowValues() {
-        const t = tracts[activeTractIdx];
-        if (!t || !t.dropShadow) return;
-        $("shadowX").value = t.dropShadow.x;
-        $("shadowY").value = t.dropShadow.y;
-        $("shadowBlur").value = t.dropShadow.blur;
-        $("shadowColor").value = t.dropShadow.color;
-        $("shadowAlpha").value = Math.round(t.dropShadow.alpha * 100);
-      }
-      
-      function updateDropShadow() {
-        const t = tracts[activeTractIdx];
-        if (!t) return;
-        if (!t.dropShadow)
-          t.dropShadow = JSON.parse(JSON.stringify(dropShadow));
-        t.dropShadow.x = parseInt($("shadowX").value) || 0;
-        t.dropShadow.y = parseInt($("shadowY").value) || 0;
-        t.dropShadow.blur = parseInt($("shadowBlur").value) || 0;
-        t.dropShadow.color = $("shadowColor").value;
-        t.dropShadow.alpha = (parseInt($("shadowAlpha").value) || 0) / 100;
-      }
-      
-      function removeDropShadow() {
-        const t = tracts[activeTractIdx];
-        if (!t) return;
-        saveUndo();
-        t.dropShadow = null;
-        $("dropShadowPopover").classList.remove("show");
-        redraw();
-        showToast("Drop shadow removed");
-      }
-      
       function hitTest(sx, sy) {
         // Legend
         if ($("mapShowLegend").checked && tracts.length) {
           const c = $("canvasContainer"),
             lp = getLegendPos(c.clientWidth, c.clientHeight);
           const lw = getLegendDims();
-          if (
-            sx >= lp.x &&
-            sx <= lp.x + lw.w &&
-            sy >= lp.y - lw.h &&
-            sy <= lp.y
-          )
+          if (sx >= lp.x && sx <= lp.x + lw.w && sy >= lp.y - lw.h && sy <= lp.y)
             return { type: "legend" };
         }
         for (let ti = tracts.length - 1; ti >= 0; ti--) {
@@ -2925,20 +3952,30 @@
             const maxX = Math.max(s1.x, s2.x) + 6;
             const minY = Math.min(s1.y, s2.y) - 6;
             const maxY = Math.max(s1.y, s2.y) + 6;
-            if (shape.type === "line" || shape.type === "arrow" || shape.type === "dashedLine") {
+            if (
+              shape.type === "line" ||
+              shape.type === "arrow" ||
+              shape.type === "dashedLine"
+            ) {
               // Check distance to line segment
-              const dx = s2.x - s1.x, dy = s2.y - s1.y;
+              const dx = s2.x - s1.x,
+                dy = s2.y - s1.y;
               const len2 = dx * dx + dy * dy;
               if (len2 > 0) {
-                const t2 = Math.max(0, Math.min(1, ((sx - s1.x) * dx + (sy - s1.y) * dy) / len2));
-                const px = s1.x + t2 * dx, py = s1.y + t2 * dy;
+                const t2 = Math.max(
+                  0,
+                  Math.min(1, ((sx - s1.x) * dx + (sy - s1.y) * dy) / len2),
+                );
+                const px = s1.x + t2 * dx,
+                  py = s1.y + t2 * dy;
                 const dist = Math.sqrt((sx - px) * (sx - px) + (sy - py) * (sy - py));
                 if (dist < 8) return { type: "shape", tractIdx: ti, shapeIdx: si };
               }
             } else if (shape.type === "circle") {
               const r = Math.sqrt((s2.x - s1.x) ** 2 + (s2.y - s1.y) ** 2);
               const dist = Math.sqrt((sx - s1.x) ** 2 + (sy - s1.y) ** 2);
-              if (Math.abs(dist - r) < 8) return { type: "shape", tractIdx: ti, shapeIdx: si };
+              if (Math.abs(dist - r) < 8)
+                return { type: "shape", tractIdx: ti, shapeIdx: si };
             } else {
               // rect - check if near edges
               if (sx >= minX && sx <= maxX && sy >= minY && sy <= maxY) {
@@ -2959,7 +3996,6 @@
         }
         return null;
       }
-      
 
 
       // ── drawing ──
@@ -2996,6 +4032,7 @@
         for (let i = 0; i < tracts.length; i++)
           drawTract(tracts[i], i === activeTractIdx);
         drawShapes(); // ADDED THIS LINE
+        drawAnnotations();
         const mc = $("mapTextColor").value;
         if ($("mapShowNorth").checked) drawNorthArrow(W, H, mc);
         if ($("mapShowScale").checked) drawScaleBar(W, H, mc);
@@ -3124,9 +4161,7 @@
       
         // Fill
         ctx.beginPath();
-        sp.forEach((p, i) =>
-          i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y),
-        );
+        sp.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
         ctx.closePath();
         ctx.globalAlpha = tract.alpha;
         ctx.fillStyle = tract.fillColor;
@@ -3177,15 +4212,13 @@
           const r = call._ptRange || { start: i, end: i + 1 };
           const sp0 = w2s(pts[r.start].x, pts[r.start].y);
           const sp1 = w2s(pts[r.end].x, pts[r.end].y);
-          const mx = pos.ax || (sp0.x + sp1.x) / 2,
-            my = pos.ay || (sp0.y + sp1.y) / 2;
+          // Always anchor leader line to line midpoint (not vertex)
+          const mx = (sp0.x + sp1.x) / 2,
+            my = (sp0.y + sp1.y) / 2;
           const dx2 = sp1.x - sp0.x,
             dy2 = sp1.y - sp0.y,
             ll = Math.sqrt(dx2 * dx2 + dy2 * dy2);
-          const lw = lines.reduce(
-            (m, l) => Math.max(m, l.length * fs * 0.55),
-            0,
-          );
+          const lw = lines.reduce((m, l) => Math.max(m, l.length * fs * 0.55), 0);
           const hasM = !!call.labelOffset,
             autoL = tract.leaderLines && (ll < lw * 1.2 || ll < 60);
           if (hasM || autoL) {
@@ -3208,9 +4241,7 @@
           }
           let ta = ((call.labelRotation || 0) * Math.PI) / 180;
           if (!hasM && !autoL) {
-            ta =
-              Math.atan2(dy2, dx2) +
-              ((call.labelRotation || 0) * Math.PI) / 180;
+            ta = Math.atan2(dy2, dx2) + ((call.labelRotation || 0) * Math.PI) / 180;
             if (ta > Math.PI / 2) ta -= Math.PI;
             if (ta < -Math.PI / 2) ta += Math.PI;
           }
@@ -3220,10 +4251,7 @@
           const lh = fs * 1.3,
             th = lines.length * lh;
           ctx.font = `500 ${fs}px 'JetBrains Mono',monospace`;
-          const mw = lines.reduce(
-              (m, l) => Math.max(m, ctx.measureText(l).width),
-              0,
-            ),
+          const mw = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0),
             pad = 4;
           if (tract.showLabelBg) {
             const bg = hexToRgb(tract.labelBg);
@@ -3319,7 +4347,6 @@
         ctx.fillText(tract.name, 0, 0);
         ctx.restore();
       }
-      
       
       // Draw persistent shapes for active tract
       function drawShapes() {
@@ -3484,7 +4511,6 @@
         }
         ctx.restore();
       }
-      
 
 
       // ── shapes ──
@@ -4197,10 +5223,15 @@
       function setupInteraction() {
         const container = $("canvasContainer");
         let dragStartPos = null; // track initial mouse pos for drag threshold
+        let annoMouseDownIdx = -1; // track if mousedown was on an annotation
+        let annoHasDragged = false;
         container.addEventListener("mousedown", (e) => {
           const rect = canvas.getBoundingClientRect(),
             sx = e.clientX - rect.left,
             sy = e.clientY - rect.top;
+      
+          // Dismiss delete CTA on any mousedown
+          hideAnnoDeleteCta();
       
           // Handle shape drawing mode
           if (currentDrawMode) {
@@ -4209,6 +5240,21 @@
             e.preventDefault();
             return;
           }
+      
+          // Check annotations first (highest priority for click interaction)
+          const annoIdx = hitTestAnno(sx, sy);
+          if (annoIdx >= 0) {
+            annoMouseDownIdx = annoIdx;
+            annoHasDragged = false;
+            dragStartPos = { x: sx, y: sy };
+            const a = annotations[annoIdx];
+            const s = w2s(a.wx, a.wy);
+            dragTarget = { type: "anno", idx: annoIdx };
+            dragOffset = { x: sx - s.x, y: sy - s.y };
+            e.preventDefault();
+            return;
+          }
+          annoMouseDownIdx = -1;
       
           const hit = hitTest(sx, sy);
           if (hit) {
@@ -4260,7 +5306,13 @@
           // Handle shape drawing preview
           if (currentDrawMode && drawStart) {
             redraw();
-            drawShape(currentDrawMode, drawStart, { x: sx, y: sy }, $("shapeColor").value || "#000000", parseInt($("shapeWidth").value) || 2);
+            drawShape(
+              currentDrawMode,
+              drawStart,
+              { x: sx, y: sy },
+              $("shapeColor").value || "#000000",
+              parseInt($("shapeWidth").value) || 2,
+            );
             return;
           }
       
@@ -4271,18 +5323,25 @@
                 dy = sy - dragStartPos.y;
               if (Math.sqrt(dx * dx + dy * dy) < 3) return; // below threshold, don't move yet
               dragStartPos = null; // threshold exceeded, allow drag from now on
+              if (dragTarget.type === "anno") annoHasDragged = true;
             }
             const tx = sx - dragOffset.x,
               ty = sy - dragOffset.y;
             if (dragTarget.type === "legend") {
               // Legend position is now stored as top-left corner in screen coords
               legendPos = { sx: tx, sy: ty };
+            } else if (dragTarget.type === "anno") {
+              container.style.cursor = "move";
+              const wc = s2w(tx, ty);
+              annotations[dragTarget.idx].wx = wc.x;
+              annotations[dragTarget.idx].wy = wc.y;
             } else {
               const wc = s2w(tx, ty);
               if (dragTarget.type === "label") {
-                tracts[dragTarget.tractIdx].calls[
-                  dragTarget.callIdx
-                ].labelOffset = { wx: wc.x, wy: wc.y };
+                tracts[dragTarget.tractIdx].calls[dragTarget.callIdx].labelOffset = {
+                  wx: wc.x,
+                  wy: wc.y,
+                };
               } else if (dragTarget.type === "tname") {
                 tracts[dragTarget.tractIdx].nameOffset = { wx: wc.x, wy: wc.y };
               } else if (dragTarget.type === "tpid") {
@@ -4349,17 +5408,31 @@
             return;
           }
       
+          // Annotation drag cleanup (delete is now on right-click)
+          annoMouseDownIdx = -1;
+          annoHasDragged = false;
+      
           isDragging = false;
           dragTarget = null;
           dragStartPos = null;
           $("canvasContainer").style.cursor = "grab";
         });
       
-        // Right-click on canvas shapes for editing
+        // Right-click on canvas — annotations and shapes
         container.addEventListener("contextmenu", (e) => {
           const rect = canvas.getBoundingClientRect(),
             sx = e.clientX - rect.left,
             sy = e.clientY - rect.top;
+      
+          // Check annotations first
+          const annoIdx = hitTestAnno(sx, sy);
+          if (annoIdx >= 0) {
+            e.preventDefault();
+            annoDeleteTargetIdx = annoIdx;
+            showAnnoDeleteCta(annotations[annoIdx]);
+            return;
+          }
+      
           const hit = hitTest(sx, sy);
           if (hit && hit.type === "shape") {
             e.preventDefault();
@@ -4376,7 +5449,8 @@
               padding: 4px 0;
             `;
             if (hit.type === "shape") {
-              const ti = hit.tractIdx, si = hit.shapeIdx;
+              const ti = hit.tractIdx,
+                si = hit.shapeIdx;
               const currentColor = tracts[ti].shapes[si].color || "#000000";
               const currentWidth = tracts[ti].shapes[si].width || 2;
               menu.innerHTML = `
@@ -4385,11 +5459,11 @@
                   <input type="color" value="${currentColor}" style="width:22px;height:18px;border:1px solid var(--dp-border-lt);border-radius:2px;padding:0;cursor:pointer" onchange="event.stopPropagation();saveUndo();tracts[${ti}].shapes[${si}].color=this.value;redraw()">
                   <label style="font-size:9px;color:var(--dp-text2)">Width</label>
                   <select style="width:40px;font-size:9px;background:var(--dp-field);color:var(--dp-text);border:1px solid var(--dp-border-lt);border-radius:2px;padding:1px;cursor:pointer" onchange="event.stopPropagation();saveUndo();tracts[${ti}].shapes[${si}].width=parseInt(this.value);redraw()">
-                    <option value="1" ${currentWidth===1?'selected':''}>1px</option>
-                    <option value="2" ${currentWidth===2?'selected':''}>2px</option>
-                    <option value="3" ${currentWidth===3?'selected':''}>3px</option>
-                    <option value="4" ${currentWidth===4?'selected':''}>4px</option>
-                    <option value="5" ${currentWidth===5?'selected':''}>5px</option>
+                    <option value="1" ${currentWidth === 1 ? "selected" : ""}>1px</option>
+                    <option value="2" ${currentWidth === 2 ? "selected" : ""}>2px</option>
+                    <option value="3" ${currentWidth === 3 ? "selected" : ""}>3px</option>
+                    <option value="4" ${currentWidth === 4 ? "selected" : ""}>4px</option>
+                    <option value="5" ${currentWidth === 5 ? "selected" : ""}>5px</option>
                   </select>
                 </div>
                 <div style="padding:6px 12px;cursor:pointer;color:#ef4444;font-size:11px" onmousedown="event.stopPropagation();saveUndo();tracts[${ti}].shapes.splice(${si},1);redraw();document.body.removeChild(this.closest('.ctx-menu'))">
@@ -4435,16 +5509,13 @@
             if (
               !e.shiftKey &&
               hit &&
-              (hit.type === "label" ||
-                hit.type === "tname" ||
-                hit.type === "tpid")
+              (hit.type === "label" || hit.type === "tname" || hit.type === "tpid")
             ) {
               saveUndo();
               const d = e.deltaY > 0 ? -3 : 3;
               if (hit.type === "label")
                 tracts[hit.tractIdx].calls[hit.callIdx].labelRotation =
-                  (tracts[hit.tractIdx].calls[hit.callIdx].labelRotation || 0) +
-                  d;
+                  (tracts[hit.tractIdx].calls[hit.callIdx].labelRotation || 0) + d;
               else if (hit.type === "tname")
                 tracts[hit.tractIdx].nameRotation =
                   (tracts[hit.tractIdx].nameRotation || 0) + d;
@@ -4508,7 +5579,6 @@
           }
         });
       }
-      
 
 
       // ── settings ──
@@ -4631,8 +5701,12 @@
         initCanvas();
         loadMapSettings();
         hookSettingsSave();
+        initAnnotations();
+        initDsModal();
+        initImageModal();
         setupInteraction();
         switchRightPanel();
+        updateImgSettingsBtn();
         redraw();
         setTimeout(() => {
           resizeCanvas();

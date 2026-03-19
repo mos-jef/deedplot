@@ -62,10 +62,7 @@ function getLabelPos(tract, ci) {
     if (tract.numberCalls) lines.push("x");
     if (tract.showBearings) lines.push(call.bearingStr);
     if (tract.showDistances) lines.push("x");
-    const lw = lines.reduce(
-      (m, l) => Math.max(m, l.length * fs * 0.55),
-      0,
-    );
+    const lw = lines.reduce((m, l) => Math.max(m, l.length * fs * 0.55), 0);
     const ul = tract.leaderLines && (ll < lw * 1.2 || ll < 60),
       off = ul ? Math.max(60, ll * 0.8) : 18;
     return { x: mx + px * off, y: my + py * off, ax: mx, ay: my };
@@ -156,85 +153,13 @@ function updateLegendStyle() {
   legendStyle.dropShadow = $("legendDropShadow").checked;
 }
 
-function toggleDropShadowPopover() {
-  const pop = $("dropShadowPopover");
-  if (!pop) return;
-  if (pop.classList.contains("show")) {
-    pop.classList.remove("show");
-  } else {
-    const t = tracts[activeTractIdx];
-    if (!t) return;
-    if (!t.dropShadow) {
-      t.dropShadow = JSON.parse(JSON.stringify(dropShadow));
-    }
-    pop.classList.add("show");
-    updateDropShadowValues();
-    // Position popover to the right of right panel
-    const rp = $("rpLayerProps");
-    if (rp) {
-      pop.style.top = rp.getBoundingClientRect().top + "px";
-      pop.style.left = window.innerWidth - 210 - 200 + "px";
-      // Close on outside click
-      setTimeout(() => {
-        const closer = (e) => {
-          if (
-            !pop.contains(e.target) &&
-            !$(e.target.id)?.closest?.(".ftb-b")
-          ) {
-            pop.classList.remove("show");
-            document.removeEventListener("click", closer);
-          }
-        };
-        document.addEventListener("click", closer);
-      }, 0);
-    }
-  }
-}
-
-function updateDropShadowValues() {
-  const t = tracts[activeTractIdx];
-  if (!t || !t.dropShadow) return;
-  $("shadowX").value = t.dropShadow.x;
-  $("shadowY").value = t.dropShadow.y;
-  $("shadowBlur").value = t.dropShadow.blur;
-  $("shadowColor").value = t.dropShadow.color;
-  $("shadowAlpha").value = Math.round(t.dropShadow.alpha * 100);
-}
-
-function updateDropShadow() {
-  const t = tracts[activeTractIdx];
-  if (!t) return;
-  if (!t.dropShadow)
-    t.dropShadow = JSON.parse(JSON.stringify(dropShadow));
-  t.dropShadow.x = parseInt($("shadowX").value) || 0;
-  t.dropShadow.y = parseInt($("shadowY").value) || 0;
-  t.dropShadow.blur = parseInt($("shadowBlur").value) || 0;
-  t.dropShadow.color = $("shadowColor").value;
-  t.dropShadow.alpha = (parseInt($("shadowAlpha").value) || 0) / 100;
-}
-
-function removeDropShadow() {
-  const t = tracts[activeTractIdx];
-  if (!t) return;
-  saveUndo();
-  t.dropShadow = null;
-  $("dropShadowPopover").classList.remove("show");
-  redraw();
-  showToast("Drop shadow removed");
-}
-
 function hitTest(sx, sy) {
   // Legend
   if ($("mapShowLegend").checked && tracts.length) {
     const c = $("canvasContainer"),
       lp = getLegendPos(c.clientWidth, c.clientHeight);
     const lw = getLegendDims();
-    if (
-      sx >= lp.x &&
-      sx <= lp.x + lw.w &&
-      sy >= lp.y - lw.h &&
-      sy <= lp.y
-    )
+    if (sx >= lp.x && sx <= lp.x + lw.w && sy >= lp.y - lw.h && sy <= lp.y)
       return { type: "legend" };
   }
   for (let ti = tracts.length - 1; ti >= 0; ti--) {
@@ -272,20 +197,30 @@ function hitTest(sx, sy) {
       const maxX = Math.max(s1.x, s2.x) + 6;
       const minY = Math.min(s1.y, s2.y) - 6;
       const maxY = Math.max(s1.y, s2.y) + 6;
-      if (shape.type === "line" || shape.type === "arrow" || shape.type === "dashedLine") {
+      if (
+        shape.type === "line" ||
+        shape.type === "arrow" ||
+        shape.type === "dashedLine"
+      ) {
         // Check distance to line segment
-        const dx = s2.x - s1.x, dy = s2.y - s1.y;
+        const dx = s2.x - s1.x,
+          dy = s2.y - s1.y;
         const len2 = dx * dx + dy * dy;
         if (len2 > 0) {
-          const t2 = Math.max(0, Math.min(1, ((sx - s1.x) * dx + (sy - s1.y) * dy) / len2));
-          const px = s1.x + t2 * dx, py = s1.y + t2 * dy;
+          const t2 = Math.max(
+            0,
+            Math.min(1, ((sx - s1.x) * dx + (sy - s1.y) * dy) / len2),
+          );
+          const px = s1.x + t2 * dx,
+            py = s1.y + t2 * dy;
           const dist = Math.sqrt((sx - px) * (sx - px) + (sy - py) * (sy - py));
           if (dist < 8) return { type: "shape", tractIdx: ti, shapeIdx: si };
         }
       } else if (shape.type === "circle") {
         const r = Math.sqrt((s2.x - s1.x) ** 2 + (s2.y - s1.y) ** 2);
         const dist = Math.sqrt((sx - s1.x) ** 2 + (sy - s1.y) ** 2);
-        if (Math.abs(dist - r) < 8) return { type: "shape", tractIdx: ti, shapeIdx: si };
+        if (Math.abs(dist - r) < 8)
+          return { type: "shape", tractIdx: ti, shapeIdx: si };
       } else {
         // rect - check if near edges
         if (sx >= minX && sx <= maxX && sy >= minY && sy <= maxY) {
@@ -306,4 +241,3 @@ function hitTest(sx, sy) {
   }
   return null;
 }
-

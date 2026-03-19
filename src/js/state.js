@@ -49,6 +49,7 @@ function saveUndo() {
         typeof v === "function" ? undefined : v,
       ),
     ),
+    annotations: JSON.parse(JSON.stringify(annotations)),
     activeTractIdx,
     legendPos: { ...legendPos },
   };
@@ -63,6 +64,7 @@ function doUndo() {
   const s = undoStack.pop();
   activeTractIdx = s.activeTractIdx;
   legendPos = s.legendPos;
+  if (s.annotations) annotations = s.annotations;
   tracts = s.tracts.map((t) => {
     t.calls = t.calls.map((c) => {
       c.toRad = makeToRad(c.quad, c.deg, c.min, c.sec, c.dir);
